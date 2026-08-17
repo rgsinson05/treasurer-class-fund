@@ -1,0 +1,410 @@
+const DB_NAME = 'BSCS2CTreasury';
+const DB_VERSION = 1;
+const STORE_NAMES = ['students','contributions','expenses','activity','recycle','settings'];
+const ADMIN = 'Treasurer';
+const PASSWORD = 'BSCS2C';
+
+let db;
+let dbReadyPromise=Promise.resolve();
+let dataReady=false;
+let dataInitPromise=null;
+let currentView = 'dashboard';
+let state = { students: [], contributions: [], expenses: [], activity: [], recycle: [], collectionSessions: [], settings: { contributionAmount: 5, className: 'BSCS2C', eventName: 'Christmas Party', noClassDates: [], appDateKey: '' } };
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = prefix => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+const money = n => `₱${Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const dateTime = d => new Date(d).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'});
+const dateOnly = d => new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+const esc = s => String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    // Open at the database's existing version so a database created by a later
+    // build is never downgraded. Missing v16 stores are added only when an
+    // upgrade is actually required.
+    const req=indexedDB.open(DB_NAME);
+    req.onupgradeneeded=e=>{const d=e.target.result; STORE_NAMES.forEach(name=>{if(!d.objectStoreNames.contains(name)) d.createObjectStore(name,{keyPath:'id'});});};
+    req.onblocked=()=>reject(new Error('The local database is busy. Close any other BSCS2C Treasurer tab or installed app and reopen this one.'));
+    req.onerror=()=>reject(req.error||new Error('Could not open local database.'));
+    req.onsuccess=()=>{const connection=req.result;connection.onversionchange=()=>connection.close();resolve(connection)};
+  });
+}
+function tx(store,mode='readonly'){if(!db) throw new Error('Local database is not ready.'); if(!db.objectStoreNames.contains(store)) throw new Error(`Missing local data store: ${store}`); return db.transaction(store,mode).objectStore(store)}
+async function getAll(store){await dbReadyPromise;return new Promise((resolve,reject)=>{try{const r=tx(store).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)}catch(err){reject(err)}})}
+async function put(store,obj){await dbReadyPromise;return new Promise((resolve,reject)=>{try{const r=tx(store,'readwrite').put(obj);r.onsuccess=()=>resolve(obj);r.onerror=()=>reject(r.error)}catch(err){reject(err)}})}
+async function del(store,id){await dbReadyPromise;return new Promise((resolve,reject)=>{try{const r=tx(store,'readwrite').delete(id);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)}catch(err){reject(err)}})}
+async function refresh(){
+  state.students=await getAll('students'); state.contributions=await getAll('contributions'); state.expenses=await getAll('expenses'); state.activity=await getAll('activity'); state.recycle=await getAll('recycle');
+  const settings=await getAll('settings'); state.settings={...state.settings,...Object.fromEntries(settings.map(x=>[x.key,x.value]))};
+  state.collectionSessions=Array.isArray(state.settings.collectionSessions)?state.settings.collectionSessions:[];
+  if(!Array.isArray(state.settings.noClassDates)) state.settings.noClassDates=[];
+  if(typeof state.settings.appDateKey!=='string') state.settings.appDateKey='';
+  const missingDates=[];
+  for(const s of state.students){ if(!s.createdAt){ const first=state.contributions.filter(x=>x.studentId===s.id).sort((a,b)=>new Date(a.at)-new Date(b.at))[0]; s.createdAt=first?.at||new Date().toISOString(); s.updatedAt=new Date().toISOString(); missingDates.push(s); } }
+  for(const s of missingDates) await put('students',s);
+}
+async function saveSetting(key,value){await put('settings',{id:key,key,value});state.settings[key]=value}
+async function log(action,details){await put('activity',{id:uid('act'),action,details,at:new Date().toISOString(),by:ADMIN});}
+async function softDelete(store,obj,type){await put('recycle',{id:uid('del'),originalId:obj.id,store,type,data:obj,deletedAt:new Date().toISOString(),deletedBy:ADMIN});await del(store,obj.id);await log(`Deleted ${type}`,`${type} ${obj.name||obj.description||obj.id} moved to recycle bin.`)}
+
+function showToast(message,type='success'){const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=message;$('#toastRegion').appendChild(el);setTimeout(()=>el.remove(),3200)}
+function modal(title,body,actions=''){const root=$('#modalRoot');root.innerHTML=`<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h3>${title}</h3><button class="icon-btn" data-close-modal>×</button></div>${body}${actions}</div></div>`;$('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop'||e.target.closest('[data-close-modal]')) closeModal()});}
+function closeModal(){$('#modalRoot').innerHTML=''}
+function button(label,cls='',attrs=''){return `<button class="${cls}" ${attrs}>${label}</button>`}
+
+function render(){
+  const titles={dashboard:['OVERVIEW','Dashboard'],students:['PEOPLE','Students'],contributions:['INCOME','Contributions'],quickRecord:['QUICK COLLECTION','Quick Record'],collectionSessions:['CASH CONTROL','Collection Sessions'],expenses:['OUTGOING','Expenses'],reports:['REPORTING','Reports'],recycle:['RECOVERY','Recycle Bin'],activity:['AUDIT','Activity Log'],settings:['CONFIGURATION','Settings']};
+  $('#pageEyebrow').textContent=titles[currentView][0];$('#pageTitle').textContent=titles[currentView][1];
+  $$('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
+  const views={dashboard:renderDashboard,students:renderStudents,contributions:renderContributions,quickRecord:renderQuickRecord,collectionSessions:renderCollectionSessions,expenses:renderExpenses,reports:renderReports,recycle:renderRecycle,activity:renderActivity,settings:renderSettings};
+  $('#viewContainer').innerHTML=views[currentView]();bindViewEvents();
+}
+
+function getCollectionSession(dateKey=effectiveTodayKey()){return state.collectionSessions.find(x=>x.date===dateKey)||null;}
+function sessionTotal(session){if(!session)return 0;const ids=new Set(session.paymentIds||[]);return state.contributions.filter(x=>ids.has(x.id)).reduce((sum,x)=>sum+Number(x.amount||0),0);}
+function todayCollectionStats(){
+  const today=effectiveTodayKey();const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const active=state.students.filter(s=>s.status==='Active');
+  let expected=0,covered=0,collected=0;
+  for(const s of active){const l=studentLedger(s.id,today);const d=l.due.find(x=>x.date===today);if(!isClassDay(today)||!d)continue;if(d.status==='unpaid')expected+=daily;else covered++;}
+  for(const p of state.contributions){for(const a of (p.allocations||[])){if(a.date===today&&a.status==='paid')collected+=Number(a.amount)||0;}}
+  return {today,daily,active:active.length,expected,collected,remaining:Math.max(0,expected-collected),covered};
+}
+function renderTodayCollectionCard(){
+  const x=todayCollectionStats();const pct=x.expected>0?Math.min(100,(x.collected/x.expected)*100):x.active?100:0;const session=getCollectionSession(x.today);const sessionState=session?(session.status==='open'?`Session open · ${money(sessionTotal(session))}`:`Session closed · ${money(sessionTotal(session))}`):'No session started';
+  return `<section class="panel glass today-collection-card"><div class="panel-header"><div><h3>Today's Collection</h3><span class="muted">${dateOnly(effectiveTodayDate())} · ${x.active} active students</span></div><span class="badge ${x.remaining?'expense':'paid'}">${x.remaining?money(x.remaining)+' remaining':'Complete'}</span></div><div class="today-collection-grid"><div><span>Expected today</span><strong>${money(x.expected)}</strong></div><div><span>Collected today</span><strong>${money(x.collected)}</strong></div><div><span>Covered today</span><strong>${x.covered} / ${x.active}</strong></div></div><div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div><div class="progress-meta"><span>${Math.round(pct)}% covered</span><span>${sessionState}</span></div></div><div class="today-collection-actions">${button('View unpaid today','ghost-btn','data-action="view-today-unpaid"')}${session?button('Open session','small-btn','data-view="collectionSessions"'):button('Start collection session','primary-btn','data-action="start-session"')}</div></section>`;
+}
+function collectionSessionDetail(sessionId){
+  const session=state.collectionSessions.find(x=>x.id===sessionId);if(!session)return;
+  const ids=new Set(session.paymentIds||[]);const payments=state.contributions.filter(x=>ids.has(x.id)).sort((a,b)=>new Date(b.at)-new Date(a.at));const total=sessionTotal(session);
+  const rows=payments.length?payments.map(p=>`<div class="session-payment-row"><div><strong>${esc(displayStudent(state.students.find(s=>s.id===p.studentId)))}</strong><span>${dateTime(p.at)} · ${esc(p.by||ADMIN)}</span></div><strong>${money(p.amount)}</strong></div>`).join(''):'<div class="empty">No payments attached to this session.</div>';
+  modal(`Session · ${dateOnly(dateFromKey(session.date))}`,`<div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${payments.length}</strong></div><div><span class="muted">Status</span><strong>${session.status==='open'?'Open':'Closed'}</strong></div>${session.status==='closed'?`<div><span class="muted">Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span class="muted">Difference</span><strong class="${Math.abs(Number(session.difference||0))<0.001?'good-text':'warn-text'}">${money(session.difference)}</strong></div>`:''}</div><div class="history-section-title"><div><strong>Payments in this session</strong><span>Actual money collected during the session</span></div></div><div class="session-payment-list">${rows}</div>${session.note?`<div class="footer-note" style="margin-top:12px">Note: ${esc(session.note)}</div>`:''}`,`<div class="modal-actions">${session.status==='open'?button('Add existing payment','ghost-btn','data-action="attach-session-payment"'):''}${button('Delete session','danger-btn','data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"')}<button class="ghost-btn" data-close-modal>Close</button></div>`);
+}
+
+function renderCollectionSessions(){
+  const today=effectiveTodayKey();const session=getCollectionSession(today);const sessions=[...state.collectionSessions].sort((a,b)=>b.date.localeCompare(a.date));
+  const current=session?`<section class="panel glass session-hero"><div class="panel-header"><div><h3>Today's session</h3><span class="muted">${dateOnly(dateFromKey(today))}</span></div><span class="badge ${session.status==='open'?'paid':'active'}">${session.status==='open'?'Open':'Closed'}</span></div><div class="session-summary"><div><span>Collected</span><strong>${money(sessionTotal(session))}</strong></div><div><span>Payments</span><strong>${(session.paymentIds||[]).length}</strong></div><div><span>Started</span><strong>${dateTime(session.startedAt)}</strong></div>${session.status==='closed'?`<div><span>Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span>Difference</span><strong class="${Math.abs(Number(session.difference||0))<0.001?'good-text':'warn-text'}">${money(session.difference)}</strong></div>`:''}</div>${session.status==='open'?`<div class="session-actions">${button('Add existing payment','ghost-btn','data-action="attach-session-payment"')}${button('Close session','primary-btn','data-action="close-session"')}</div>`:`<div class="footer-note">This session is closed. Payments can no longer be attached to it.</div>`}</section>`:`<section class="panel glass session-hero"><div class="panel-header"><div><h3>No session started today</h3><span class="muted">Sessions track only money collected during the session.</span></div></div><div class="session-actions">${button('Start today’s collection session','primary-btn','data-action="start-session"')}</div></section>`;
+  const history=sessions.map(x=>`<article class="session-row" data-session-id="${x.id}"><div><strong>${dateOnly(dateFromKey(x.date))}</strong><span>${(x.paymentIds||[]).length} payment${(x.paymentIds||[]).length===1?'':'s'} · ${x.status==='open'?'Open':'Closed'}</span></div><div class="session-row-right"><div><strong>${money(sessionTotal(x))}</strong>${x.status==='closed'?`<span class="${Math.abs(Number(x.difference||0))<0.001?'good-text':'warn-text'}">${Math.abs(Number(x.difference||0))<0.001?'✓ Balanced':`Difference ${money(x.difference)}`}</span>`:'<span>In progress</span>'}</div>${button('Delete','small-btn danger','data-action="delete-session" data-session-delete="${x.id}" data-session-date="${x.date}"')}</div></article>`).join('');
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Collection Sessions</h3><span class="muted">One session per app date · cash collected during that session only</span></div></div></section>${current}<section class="panel glass"><div class="panel-header"><div><h3>Session history</h3><span class="muted">${sessions.length} session${sessions.length===1?'':'s'}</span></div></div><div class="session-list">${history||'<div class="empty">No collection sessions yet.</div>'}</div></section></div>`;
+}
+
+function renderDashboard(){
+  const total=state.contributions.reduce((a,x)=>a+Number(x.amount),0), expenses=state.expenses.reduce((a,x)=>a+Number(x.amount),0), balance=total-expenses;
+  const activeStudents=state.students.filter(x=>x.status==='Active');const paid=activeStudents.filter(s=>{const l=studentLedger(s.id);return l.due.length>0&&l.outstanding===0;}).length, active=activeStudents.length, pct=active?Math.min(100,paid/active*100):0;
+  const recent=[...state.contributions.map(x=>({...x,kind:'Contribution'})),...state.expenses.map(x=>({...x,kind:'Expense'}))].sort((a,b)=>new Date(b.at||b.date)-new Date(a.at||a.date)).slice(0,7);
+  return `<div class="view">
+    <section class="panel glass app-date-panel"><div class="panel-header"><div><h3>App Date</h3><span class="muted">Controls which class day the treasury calculations consider today.</span></div><span class="badge ${state.settings.appDateKey?'expense':'active'}">${state.settings.appDateKey?'Adjusted':'Today'}</span></div><div class="app-date-controls"><div><strong>${dateOnly(effectiveTodayDate())}</strong><span class="muted">${state.settings.appDateKey?`Adjusted from device date ${dateOnly(new Date())}`:'Using your device date'}</span></div><input class="input app-date-input" id="appDatePicker" type="date" value="${effectiveTodayKey()}" aria-label="App date"><div class="app-date-actions">${button('Apply date','primary-btn','data-action="apply-app-date"')}${state.settings.appDateKey?button('Reset to today','ghost-btn','data-action="reset-app-date"'):''}</div></div></section>
+    <section class="cards">
+      ${stat('Total Collected',money(total),'↑ Contributions','₱')}${stat('Total Expenses',money(expenses),'↓ Spending','↗')}${stat('Current Balance',money(balance),'Available treasury','◎')}${stat('Paid Students',`${paid} / ${active}`,'Recorded contributors','✓')}
+    </section>
+    <section class="grid-2">
+      <div class="panel glass"><div class="panel-header"><div><h3>Contribution progress</h3><span class="muted">${esc(state.settings.eventName)}</span></div><span class="badge paid">${Math.round(pct)}%</span></div><div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div><div class="progress-meta"><span>${paid} paid</span><span>${Math.max(0,active-paid)} not recorded</span></div></div><div class="footer-note">Class days are tracked at the fixed daily amount; past due days and advance payments are allocated automatically.</div></div>
+      <div class="panel glass"><div class="panel-header"><h3>Quick actions</h3></div><div class="search-row">${button('+ Add Student','primary-btn','data-action="add-student"')}${button('+ Record Contribution','ghost-btn','data-action="add-contribution"')}${button('+ Add Expense','ghost-btn','data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
+    </section>
+    <section class="panel glass"><div class="panel-header"><div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button('View all','small-btn','data-view="contributions"')}</div>${recentTable(recent)}</section>
+    <div class="dashboard-credit">Developed by <strong>RG Sinson</strong><span>•</span><span>BSCS2C Treasurer</span></div>
+  </div>`;
+}
+function stat(label,value,sub,icon){return `<div class="stat-card glass"><div class="stat-head"><span>${label}</span><span class="stat-icon">${icon}</span></div><div class="stat-value">${value}</div><div class="stat-sub">${sub}</div></div>`}
+function recentTable(rows){if(!rows.length)return `<div class="empty">No transactions yet.</div>`;return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Type</th><th>Details</th><th>Amount</th><th>Date</th></tr></thead><tbody>${rows.map(x=>{const student=state.students.find(s=>s.id===x.studentId);return `<tr><td><span class="badge ${x.kind==='Expense'?'expense':'paid'}">${x.kind}</span></td><td>${x.kind==='Expense'?esc(x.description):esc(student?.name||'Unknown student')}</td><td>${money(x.amount)}</td><td>${dateTime(x.at||x.date)}</td></tr>`}).join('')}</tbody></table></div>`}
+
+function renderStudents(){return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button('+ Add Student','primary-btn','data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentStatusFilter" style="width:160px"><option value="all">All statuses</option><option>Active</option><option>Inactive</option></select></div><div id="studentsTable"></div></section></div>`}
+function studentsTable(filter='',status='all'){const rows=state.students.filter(s=>s.name.toLowerCase().includes(filter.toLowerCase())&&(status==='all'||s.status===status)).sort((a,b)=>a.name.localeCompare(b.name));if(!rows.length)return `<div class="empty">No students found.</div>`;return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th><th>Actions</th></tr></thead><tbody>${rows.map(s=>{const payments=state.contributions.filter(x=>x.studentId===s.id).sort((a,b)=>new Date(b.at)-new Date(a.at));const ledger=studentLedger(s.id);const todayKey=effectiveTodayKey();const todayDue=isClassDay(todayKey)&&todayKey>=localDateKey(s.createdAt)?ledger.due.find(x=>x.date===todayKey):null;const todayLabel=todayDue?.status==='paid'?'Paid':todayDue?.status==='advance'?'Advance':todayDue?'Due':'No class';return `<tr><td><strong>${esc(s.name)}</strong>${s.alias?`<div class="muted">${esc(s.alias)}</div>`:''}</td><td><span class="badge ${s.status.toLowerCase()}">${s.status}</span></td><td>${todayLabel==='Paid'?'<span class="badge paid">Paid</span>':todayLabel==='Advance'?'<span class="badge paid">Advance</span>':todayLabel==='Due'?'<span class="badge expense">Due</span>':'<span class="muted">No class</span>'}</td><td>${ledger.outstanding?`<span class="badge expense">${money(ledger.outstanding)} due</span>`:ledger.advance.length?`<span class="badge paid">${ledger.advance.length} day${ledger.advance.length===1?'':'s'} ahead</span>`:'<span class="badge active">₱0 due</span>'}</td><td>${payments[0]?dateTime(payments[0].at):'—'}</td><td><div class="actions">${button('History','small-btn','data-payment-history="'+s.id+'"')}${button('Edit','small-btn','data-edit-student="'+s.id+'"')}${s.status==='Active'?button('Record','small-btn','data-record-student="'+s.id+'"'):''}${button('Delete','small-btn danger','data-delete-student="'+s.id+'"')}</div></td></tr>`}).join('')}</tbody></table></div>`}
+
+function renderQuickRecord(q=''){
+  const fixed=Math.max(0.01,Number(state.settings.contributionAmount)||5);
+  const rows=state.students.filter(s=>s.status==='Active'&&displayStudent(s).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>displayStudent(a).localeCompare(displayStudent(b)));
+  return `<div class="view"><section class="panel glass quick-record-panel"><div class="panel-header"><div><h3>Quick Record</h3><span class="muted">Record one or more ${money(fixed)} class-day contributions in a single payment.</span></div><span class="badge paid">${money(fixed)} / class day</span></div><div class="quick-record-controls"><div class="quick-amount-box"><span class="muted">Default payment</span><strong>${money(fixed)}</strong></div><label class="override-toggle"><input type="checkbox" id="quickOverrideToggle"> <span>Override amount</span></label><input class="input quick-override-input" id="quickOverrideAmount" type="number" min="${fixed}" step="0.01" inputmode="decimal" placeholder="e.g. ${fixed*2}" disabled></div><div class="search-row quick-search-row"><input class="input search-input" id="quickRecordSearch" value="${esc(q)}" placeholder="Search student name or identifier..." autocomplete="off"></div><div class="quick-student-list">${rows.length?rows.map(s=>{const payments=state.contributions.filter(x=>x.studentId===s.id).sort((a,b)=>new Date(b.at)-new Date(a.at));const ledger=studentLedger(s.id);const today=effectiveTodayKey();const todayDue=ledger.due.find(x=>x.date===today);const status=todayDue?.status==='paid'?'Paid today':todayDue?.status==='advance'?'Paid in advance':todayDue?'Due today':'No class today';const balance=ledger.outstanding?`${money(ledger.outstanding)} due`:ledger.advance.length?`${ledger.advance.length} day${ledger.advance.length===1?'':'s'} ahead`:'Up to date';return `<div class="quick-student-row"><div class="quick-student-info"><strong>${esc(displayStudent(s))}</strong><span>${status} · ${balance} · ${payments.length?`${payments.length} payment${payments.length===1?'':'s'}`:'No payments yet'}</span></div><div class="quick-student-actions">${button('History','small-btn','data-payment-history="'+s.id+'"')}${button('Record '+money(fixed),'primary-btn quick-record-btn','data-quick-record="'+s.id+'"')}</div></div>`}).join(''):'<div class="empty">No active students found.</div>'}</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div></section></div>`;
+}
+function renderContributions(){const total=state.contributions.reduce((a,x)=>a+Number(x.amount),0);return `<div class="view"><section class="cards">${stat('Collected',money(total),'All recorded contributions','₱')}${stat('Transactions',state.contributions.length,'Payment records','≡')}${stat('Fixed amount',money(state.settings.contributionAmount),'Christmas Party','◎')}${stat('Contributors',new Set(state.contributions.map(x=>x.studentId)).size,'Unique students','✓')}</section><section class="panel glass"><div class="panel-header"><div><h3>Contribution records</h3><span class="muted">${esc(state.settings.eventName)}</span></div>${button('+ Record Contribution','primary-btn','data-action="add-contribution"')}</div><div class="search-row"><input class="input search-input" id="contributionSearch" placeholder="Search student..."><input class="input" type="date" id="contributionDateFilter" style="width:180px"></div><div id="contributionTable"></div></section></div>`}
+function contributionTable(q='',date=''){let rows=[...state.contributions].sort((a,b)=>new Date(b.at)-new Date(a.at)).filter(x=>{const s=state.students.find(s=>s.id===x.studentId);return (!q||(s?.name||'').toLowerCase().includes(q.toLowerCase()))&&(!date||x.at.slice(0,10)===date)});if(!rows.length)return `<div class="empty">No contribution records found.</div>`;return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Amount</th><th>Date/time</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(displayStudent(state.students.find(s=>s.id===x.studentId)))}</td><td><strong>${money(x.amount)}</strong></td><td>${dateTime(x.at)}</td><td>${esc(x.by)}</td><td><div class="actions">${button('Edit','small-btn','data-edit-contribution="'+x.id+'"')}${button('Delete','small-btn danger','data-delete-contribution="'+x.id+'"')}</div></td></tr>`).join('')}</tbody></table></div>`}
+
+function renderExpenses(){return `<div class="view"><section class="cards">${stat('Total Expenses',money(state.expenses.reduce((a,x)=>a+Number(x.amount),0)),'All expense records','↗')}${stat('Expense Records',state.expenses.length,'Logged expenses','≡')}${stat('Categories',new Set(state.expenses.map(x=>x.category)).size,'Used categories','◈')}${stat('Average',state.expenses.length?money(state.expenses.reduce((a,x)=>a+Number(x.amount),0)/state.expenses.length):money(0),'Per expense','≈')}</section><section class="panel glass"><div class="panel-header"><div><h3>Class expenses</h3><span class="muted">Money spent by the class</span></div>${button('+ Add Expense','primary-btn','data-action="add-expense"')}</div><div class="search-row"><input class="input search-input" id="expenseSearch" placeholder="Search category or description..."><input class="input" type="date" id="expenseDateFilter" style="width:180px"></div><div id="expenseTable"></div></section></div>`}
+function expenseTable(q='',date=''){let rows=[...state.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).filter(x=>(!q||`${x.category} ${x.description}`.toLowerCase().includes(q.toLowerCase()))&&(!date||x.date.slice(0,10)===date));if(!rows.length)return `<div class="empty">No expenses found.</div>`;return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${dateOnly(x.date)}</td><td><span class="badge expense">${esc(x.category)}</span></td><td>${esc(x.description)}</td><td><strong>${money(x.amount)}</strong></td><td>${esc(x.by)}</td><td><div class="actions">${button('Edit','small-btn','data-edit-expense="'+x.id+'"')}${button('Delete','small-btn danger','data-delete-expense="'+x.id+'"')}</div></td></tr>`).join('')}</tbody></table></div>`}
+
+function renderReports(){const collected=state.contributions.reduce((a,x)=>a+Number(x.amount),0), spent=state.expenses.reduce((a,x)=>a+Number(x.amount),0), balance=collected-spent, paid=new Set(state.contributions.map(x=>x.studentId)).size;return `<div class="view"><section class="report-box glass"><p class="eyebrow">TREASURY SUMMARY</p><h3>${esc(state.settings.className)} — ${esc(state.settings.eventName)}</h3><div class="report-grid"><div><span class="muted">Students</span><div class="report-number">${state.students.length}</div></div><div><span class="muted">Contributors</span><div class="report-number">${paid}</div></div><div><span class="muted">Collected</span><div class="report-number">${money(collected)}</div></div><div><span class="muted">Expenses</span><div class="report-number">${money(spent)}</div></div><div><span class="muted">Balance</span><div class="report-number">${money(balance)}</div></div><div><span class="muted">Contribution</span><div class="report-number">${money(state.settings.contributionAmount)}</div></div></div><div class="search-row">${button('Export JSON Backup','primary-btn','data-action="export-json"')}${button('Export Transactions CSV','ghost-btn','data-action="export-csv"')}${button('Print Report','ghost-btn','data-action="print-report"')}</div></section><section class="panel glass"><div class="panel-header"><h3>Expense breakdown</h3></div>${expenseBreakdown()}</section></div>`}
+function expenseBreakdown(){const map={};state.expenses.forEach(x=>map[x.category]=(map[x.category]||0)+Number(x.amount));const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]);if(!rows.length)return `<div class="empty">No expenses yet.</div>`;const max=Math.max(...rows.map(x=>x[1]));return rows.map(([cat,val])=>`<div class="progress-wrap"><div class="progress-meta"><span>${esc(cat)}</span><strong>${money(val)}</strong></div><div class="progress-track"><div class="progress-bar" style="width:${val/max*100}%"></div></div></div>`).join('')}
+
+function renderRecycle(){const rows=[...state.recycle].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));if(!rows.length)return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Recycle Bin</h3><span class="muted">Deleted records can be restored.</span></div></div><div class="empty">Recycle bin is empty.</div></section></div>`;return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Recycle Bin</h3><span class="muted">${rows.length} deleted record(s)</span></div>${button('Empty permanently','danger-btn','data-action="empty-recycle"')}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Type</th><th>Details</th><th>Deleted</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>`<tr><td><span class="badge deleted">${esc(x.type)}</span></td><td>${esc(x.type==='Contribution' ? `${displayStudent(state.students.find(s=>s.id===x.data.studentId))} — ${money(x.data.amount)}` : (x.data.name||x.data.description||x.originalId))}</td><td>${dateTime(x.deletedAt)}</td><td><div class="actions">${button('Restore','small-btn','data-restore="'+x.id+'"')}${button('Delete forever','small-btn danger','data-purge="'+x.id+'"')}</div></td></tr>`).join('')}</tbody></table></div></section></div>`}
+function renderActivity(){const rows=[...state.activity].sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,100);return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Activity Log</h3><span class="muted">Audit history for this browser</span></div></div>${rows.length?rows.map(x=>`<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join(''):'<div class="empty">No activity recorded yet.</div>'}</section></div>`}
+function renderSettings(){const holidays=Array.isArray(state.settings.noClassDates)?state.settings.noClassDates:[];return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount)||5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div><div class="form-field" style="margin-top:13px"><label>No-class / holiday dates</label><textarea class="textarea" id="settingNoClass" rows="4" placeholder="2026-08-21, 2026-08-31">${esc(holidays.join(', '))}</textarea><div class="footer-note">Use YYYY-MM-DD dates separated by commas. Weekends are automatically skipped.</div></div><button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="setting-row"><div><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div>${button('JSON','ghost-btn','data-action="export-json"')}</div><div class="setting-row"><div><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p></div><label class="ghost-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="setting-row"><div><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div>${button('CSV','ghost-btn','data-action="export-csv"')}${button('Students CSV','ghost-btn','data-action="export-students-csv"')}</div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Access lock</strong><p>Password: BSCS2C · local UI lock only.</p></div><span class="badge active">Enabled</span></div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`}
+
+function bindViewEvents(){
+  $('#quickRecordSearch')?.addEventListener('input',e=>{const q=e.target.value;const container=$('#viewContainer');container.innerHTML=renderQuickRecord(q);bindViewEvents();const input=$('#quickRecordSearch');if(input){input.focus();input.setSelectionRange(q.length,q.length)}});
+  $('#quickOverrideToggle')?.addEventListener('change',e=>{const input=$('#quickOverrideAmount');if(input){input.disabled=!e.target.checked;if(e.target.checked){input.focus();input.select()}updateQuickRecordButtons()}});
+  $('#quickOverrideAmount')?.addEventListener('input',()=>updateQuickRecordButtons());
+  $('#studentSearch')?.addEventListener('input',e=>{$('#studentsTable').innerHTML=studentsTable(e.target.value,$('#studentStatusFilter').value)});
+  $('#studentStatusFilter')?.addEventListener('change',e=>{$('#studentsTable').innerHTML=studentsTable($('#studentSearch').value,e.target.value)});
+  if($('#studentsTable')) $('#studentsTable').innerHTML=studentsTable();
+  $('#contributionSearch')?.addEventListener('input',e=>{$('#contributionTable').innerHTML=contributionTable(e.target.value,$('#contributionDateFilter').value)});
+  $('#contributionDateFilter')?.addEventListener('change',e=>{$('#contributionTable').innerHTML=contributionTable($('#contributionSearch').value,e.target.value)});
+  if($('#contributionTable')) $('#contributionTable').innerHTML=contributionTable();
+  $('#expenseSearch')?.addEventListener('input',e=>{$('#expenseTable').innerHTML=expenseTable(e.target.value,$('#expenseDateFilter').value)});
+  $('#expenseDateFilter')?.addEventListener('change',e=>{$('#expenseTable').innerHTML=expenseTable($('#expenseSearch').value,e.target.value)});
+  if($('#expenseTable')) $('#expenseTable').innerHTML=expenseTable();
+  $('#importFile')?.addEventListener('change',handleImport);
+}
+
+function displayStudent(s){return s?.alias?`${s.name} — ${s.alias}`:(s?.name||'Unknown student')}
+function effectiveTodayKey(){return state.settings.appDateKey||localDateKey(new Date())}
+function effectiveTodayDate(){return dateFromKey(effectiveTodayKey())}
+function localDateKey(value){const d=value instanceof Date?value:new Date(value);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function dateFromKey(key){const [y,m,d]=key.split('-').map(Number);return new Date(y,m-1,d,12,0,0,0)}
+function nextDateKey(key){const d=dateFromKey(key);d.setDate(d.getDate()+1);return localDateKey(d)}
+function isNoClassDate(key){return Array.isArray(state.settings.noClassDates)&&state.settings.noClassDates.includes(key)}
+function isClassDay(key){const d=dateFromKey(key);const day=d.getDay();return day!==0&&day!==6&&!isNoClassDate(key)}
+function addClassDay(startKey,offset){let key=startKey,count=0,guard=0;while(guard++<3700){if(isClassDay(key)){if(count===offset)return key;count++;}key=nextDateKey(key)}return startKey}
+function classDaysThrough(startKey,endKey){const out=[];let key=startKey,guard=0;while(key<=endKey&&guard++<3700){if(isClassDay(key))out.push(key);key=nextDateKey(key)}return out}
+function studentLedger(studentId,asOfKey=effectiveTodayKey()){
+  const s=state.students.find(x=>x.id===studentId);if(!s)return {due:[],paid:[],unpaid:[],advance:[],outstanding:0,totalReceived:0,allocByPayment:{}};
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);
+  const start=localDateKey(s.createdAt||new Date());
+  const payments=state.contributions.filter(x=>x.studentId===studentId).sort((a,b)=>new Date(a.at)-new Date(b.at));
+  const allocatedDates=[];const allocByPayment={};
+  for(const p of payments){
+    const arr=Array.isArray(p.allocations)?p.allocations:[];
+    if(arr.length) allocByPayment[p.id]=arr.map(a=>({...a,amount:Number(a.amount)||daily}));
+    else allocByPayment[p.id]=[];
+    for(const a of allocByPayment[p.id]) if(a.date) allocatedDates.push({...a,paymentAt:p.at,paymentId:p.id});
+  }
+  let maxDate=asOfKey;
+  for(const a of allocatedDates) if(a.date>maxDate) maxDate=a.date;
+  const allDates=classDaysThrough(start,maxDate);const dueMap=new Map(allDates.map(k=>[k,{date:k,amount:daily,status:'unpaid',sourcePaymentId:null}]));
+  for(const a of allocatedDates){
+    if(!dueMap.has(a.date)) dueMap.set(a.date,{date:a.date,amount:daily,status:a.status==='advance'?'advance':'paid',sourcePaymentId:a.paymentId});
+    const d=dueMap.get(a.date);d.status=a.status==='advance'?'advance':'paid';d.sourcePaymentId=a.paymentId;
+  }
+  const due=[...dueMap.values()].filter(x=>x.date<=asOfKey);const unpaid=due.filter(x=>x.status==='unpaid');const paid=due.filter(x=>x.status==='paid');const advance=[...dueMap.values()].filter(x=>x.status==='advance');
+  return {daily,start,due,paid,unpaid,advance,outstanding:unpaid.length*daily,totalReceived:payments.reduce((a,x)=>a+(Number(x.amount)||0),0),allocByPayment};
+}
+function ledgerBeforePayment(studentId,paymentId,paymentAt){
+  const original=state.contributions;state.contributions=original.filter(x=>x.id!==paymentId);const l=studentLedger(studentId,localDateKey(paymentAt||new Date()));state.contributions=original;return l;
+}
+function allocationForAmount(studentId,amount,paymentAt){
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const key=effectiveTodayKey();const before=ledgerBeforePayment(studentId,'__new__',effectiveTodayDate());const past=before.unpaid.filter(x=>x.date<key);const today=before.due.find(x=>x.date===key&&x.status==='unpaid');return {daily,key,past,today,maxPast:past.length*daily,maxToday:today?daily:0,advanceStart:past.length?past[past.length-1].date:key};
+}
+function allocationSummary(studentId){const l=studentLedger(studentId);return `${l.unpaid.length} unpaid · ${l.advance.length} advance`}
+function persistStudentAllocations(studentId){const payments=state.contributions.filter(x=>x.studentId===studentId);const l=studentLedger(studentId);return Promise.all(payments.map(async p=>{p.allocations=l.allocByPayment[p.id]||[];p.unallocatedAmount=0;await put('contributions',p)}))}
+
+async function studentModal(student){const s=student||{id:'',name:'',alias:'',status:'Active'};modal(student?'Edit Student':'Add Student',`<form id="studentForm"><div class="form-field"><label>Name</label><input class="input" id="studentName" required maxlength="100" value="${esc(s.name)}" placeholder="e.g. Juan Dela Cruz"></div><div class="form-field" style="margin-top:13px"><label>Another name / identifier <span class="muted">(optional)</span></label><input class="input" id="studentAlias" maxlength="60" value="${esc(s.alias||'')}" placeholder="e.g. Juan 2, J. Dela Cruz, or nickname"><div class="footer-note">Use this when two classmates have the same name. It makes contribution records easier to identify.</div></div><div class="form-field" style="margin-top:13px"><label>Status</label><select class="select" id="studentStatus"><option ${s.status==='Active'?'selected':''}>Active</option><option ${s.status==='Inactive'?'selected':''}>Inactive</option></select></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save student</button></div></form>`);$('#studentForm').onsubmit=async e=>{e.preventDefault();const name=$('#studentName').value.trim(),alias=$('#studentAlias').value.trim();if(!name)return;const obj={id:s.id||uid('stu'),name,alias,status:$('#studentStatus').value,createdAt:s.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};await put('students',obj);await log(student?'Updated student':'Added student',displayStudent(obj));await refresh();closeModal();render();showToast(student?'Student updated':'Student added')};}
+
+async function contributionModal(existing,studentId){
+  const options=state.students.filter(s=>s.status==='Active').sort((a,b)=>displayStudent(a).localeCompare(displayStudent(b))).map(s=>`<option value="${s.id}" ${s.id===(existing?.studentId||studentId)?'selected':''}>${esc(displayStudent(s))}</option>`).join('');if(!options)return showToast('No active students available.','error');
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const c=existing||{id:'',amount:daily,at:effectivePaymentISO(),studentId:studentId||''};
+  modal(existing?'Edit Contribution':'Record Contribution',`<form id="contributionForm"><div class="form-grid"><div class="form-field full-width"><label>Student</label><select class="select" id="contributionStudent" required>${options}</select></div><div class="form-field"><label>Amount received</label><input class="input" id="contributionAmount" type="number" min="${daily}" step="${daily}" value="${Number(c.amount)}" required></div><div class="form-field"><label>Date & time</label><input class="input" id="contributionAt" type="datetime-local" value="${toLocalInput(c.at)}" required><div class="footer-note">New payments use the current App Date. The real recording time is kept separately for the audit trail.</div></div></div><div class="footer-note">After entering the amount, you'll choose exactly how much goes to past balance, today, and advance payment.</div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Continue to allocation</button></div></form>`);
+  $('#contributionForm').onsubmit=e=>{e.preventDefault();const sid=$('#contributionStudent').value;const value=Number($('#contributionAmount').value);const entered=$('#contributionAt').value;const at=existing?new Date(entered):new Date(effectivePaymentISO(entered));if(!Number.isFinite(value)||value<daily||Math.abs(value/daily-Math.round(value/daily))>1e-9)return showToast(`Amount must be ${money(daily)} or a multiple of it.`,'error');closeModal();manualAllocationModal({existing,studentId:sid,amount:value,at:at.toISOString()});};
+}
+function manualAllocationModal({existing,studentId,amount,at}){
+  const s=state.students.find(x=>x.id===studentId);if(!s)return;
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const info=allocationForAmount(studentId,amount,at);const prior=existing?.allocations||[];
+  const priorPast=prior.filter(a=>a.date<info.key&&a.status!=='advance').reduce((a,x)=>a+(Number(x.amount)||daily),0);const priorToday=prior.filter(a=>a.date===info.key&&a.status!=='advance').reduce((a,x)=>a+(Number(x.amount)||daily),0);const priorAdvance=prior.filter(a=>a.status==='advance').reduce((a,x)=>a+(Number(x.amount)||daily),0);
+  const defaultPast=Math.min(amount,priorPast||Math.min(amount,Math.max(0,amount-daily)));const defaultToday=Math.min(daily,priorToday||Math.max(0,Math.min(daily,amount-defaultPast)));const defaultAdvance=Math.max(0,amount-defaultPast-defaultToday);
+  const todayIsClassDay=isClassDay(info.key);
+  modal('Allocate Payment',`<form id="allocationForm"><div class="history-summary"><div><span class="muted">Student</span><strong>${esc(displayStudent(s))}</strong></div><div><span class="muted">Payment received</span><strong>${money(amount)}</strong></div><div><span class="muted">Date</span><strong>${dateTime(at)}</strong></div></div><div class="allocation-grid"><div class="form-field"><label>Past balance</label><input class="input" id="allocPast" type="number" min="0" max="${amount}" step="${daily}" value="${defaultPast}"><div class="footer-note">Manual past balance. Enter the amount you want this payment to settle; no past date is required.</div></div><div class="form-field"><label>Today's contribution</label><input class="input" id="allocToday" type="number" min="0" max="${todayIsClassDay?daily:0}" step="${daily}" value="${defaultToday}"><div class="footer-note">${todayIsClassDay?`Today: ${dateOnly(info.key)} · ${money(daily)}`:'No class today.'}</div></div><div class="form-field"><label>Advance payment</label><input class="input" id="allocAdvance" type="number" min="0" max="${amount}" step="${daily}" value="${defaultAdvance}"><div class="footer-note">Covers future class days.</div></div></div><div class="allocation-total"><span>Allocated</span><strong id="allocationTotal">${money(defaultPast+defaultToday+defaultAdvance)}</strong><span id="allocationRemaining">${Math.abs(defaultPast+defaultToday+defaultAdvance-amount)<0.001?'✓ Fully allocated':`Remaining ${money(amount-defaultPast-defaultToday-defaultAdvance)}`}</span></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">${existing?'Save allocation':'Record payment'}</button></div></form>`);
+  const update=()=>{const p=Number($('#allocPast').value)||0,t=Number($('#allocToday').value)||0,a=Number($('#allocAdvance').value)||0,total=p+t+a;$('#allocationTotal').textContent=money(total);$('#allocationRemaining').textContent=Math.abs(total-amount)<0.001?'✓ Fully allocated':total<amount?`Remaining ${money(amount-total)}`:`Over by ${money(total-amount)}`;};
+  ['#allocPast','#allocToday','#allocAdvance'].forEach(sel=>$(sel).addEventListener('input',update));
+  $('#allocationForm').onsubmit=async e=>{e.preventDefault();const past=Number($('#allocPast').value)||0,today=Number($('#allocToday').value)||0,advance=Number($('#allocAdvance').value)||0,total=past+today+advance;if(Math.abs(total-amount)>0.001)return showToast(`Allocation must equal the received amount of ${money(amount)}.`,'error');if(today>0&&!isClassDay(info.key))return showToast("Today is not a class day, so today's contribution must be 0.",'error');if(today>daily+0.001)return showToast(`Today's contribution can only be ${money(daily)}.`,'error');if([past,today,advance].some(v=>v<0||Math.abs(v/daily-Math.round(v/daily))>1e-9))return showToast(`Each allocation must use ${money(daily)} units.`,'error');
+    const allocations=[];let pastRemaining=past;for(const d of info.past){if(pastRemaining+1e-9<daily)break;allocations.push({date:d.date,amount:daily,status:'paid'});pastRemaining-=daily;}const manualPast=Math.max(0,pastRemaining);if(manualPast>0)allocations.push({date:null,amount:manualPast,status:'past'});if(today>0)allocations.push({date:info.key,amount:daily,status:'paid'});let cursor=addClassDay(info.key,1);let remainingAdvance=advance;while(remainingAdvance+1e-9>=daily){allocations.push({date:cursor,amount:daily,status:'advance'});remainingAdvance-=daily;cursor=addClassDay(cursor,1);}
+    const activeSession=getCollectionSession(localDateKey(at));const sessionId=existing?.sessionId||((!existing&&activeSession&&activeSession.status==='open')?activeSession.id:'');const obj={id:existing?.id||uid('pay'),studentId,amount,at,recordedAt:existing?.recordedAt||new Date().toISOString(),by:existing?.by||ADMIN,event:existing?.event||state.settings.eventName,allocations,unallocatedAmount:0,sessionId};await put('contributions',obj);if(sessionId&&activeSession&&!activeSession.paymentIds.includes(obj.id)){activeSession.paymentIds.push(obj.id);await persistCollectionSessions();}await refresh();await log(existing?'Updated contribution':'Recorded contribution',`${displayStudent(s)} — ${money(amount)} (${money(past)} past · ${money(today)} today · ${money(advance)} advance)`);await refresh();closeModal();render();showToast(existing?'Contribution updated':'Payment recorded and allocated');
+  };
+}
+function paymentHistoryModal(studentId){
+  const s=state.students.find(x=>x.id===studentId); if(!s)return;
+  const ledger=studentLedger(studentId);const payments=state.contributions.filter(x=>x.studentId===studentId).sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const total=payments.reduce((a,x)=>a+Number(x.amount||0),0);const todayKey=effectiveTodayKey();const todayDue=ledger.due.find(x=>x.date===todayKey);
+  const todayStatus=!isClassDay(todayKey)?'No class today':todayDue?.status==='paid'?'Paid today':todayDue?.status==='advance'?'Paid in advance':'Due today';
+  const balanceText=ledger.outstanding?money(ledger.outstanding)+' due':ledger.advance.length?`${ledger.advance.length} day${ledger.advance.length===1?'':'s'} ahead`:'Up to date';
+  const statusClass=ledger.outstanding?'expense':ledger.advance.length?'paid':'active';
+  const paymentCards=payments.length?payments.map(x=>{
+    const alloc=ledger.allocByPayment[x.id]||[];
+    const allocTotal=alloc.reduce((a,v)=>a+Number(v.amount||0),0);
+    const allocationRows=alloc.map(a=>{
+      const label=a.status==='advance'?'Advance':a.date?'Settled':'Past balance';
+      const sub=a.date?dateOnly(a.date):'Previously unpaid contribution';
+      return `<div class="allocation-row"><div><strong>${label}</strong><span>${sub}</span></div><b>${money(a.amount)}</b></div>`;
+    }).join('');
+    return `<article class="payment-history-card">
+      <div class="payment-history-main">
+        <div class="payment-history-date"><span class="payment-dot"></span><div><strong>${dateOnly(x.at)}</strong><span>${new Date(x.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span></div></div>
+        <div class="payment-history-amount">${money(x.amount)}</div>
+      </div>
+      <div class="payment-history-meta"><span>${esc(x.event||state.settings.eventName)}</span><span>Recorded by ${esc(x.by||ADMIN)}</span></div>
+      ${alloc.length?`<details class="allocation-details"><summary><span>View allocation</span><span>${alloc.length} item${alloc.length===1?'':'s'} · ${money(allocTotal)}</span></summary><div class="allocation-list">${allocationRows}</div></details>`:'<div class="allocation-empty">No allocation details recorded.</div>'}
+      <div class="payment-history-actions">${button('Edit','small-btn','data-edit-contribution="'+x.id+'"')}${button('Delete','small-btn danger','data-delete-contribution="'+x.id+'"')}</div>
+    </article>`;
+  }).join(''):'<div class="empty">No contribution payments recorded for this student yet.</div>';
+  const unpaidSection=`<details class="ledger-section" ${ledger.unpaid.length?'':'open'}><summary><div><strong>Unpaid class days</strong><span>${ledger.unpaid.length?`${ledger.unpaid.length} day${ledger.unpaid.length===1?'':'s'} · ${money(ledger.outstanding)} outstanding`:'None'}</span></div><span class="ledger-section-badge ${ledger.unpaid.length?'danger':'ok'}">${ledger.unpaid.length?money(ledger.outstanding):'Clear'}</span></summary><div class="ledger-list">${ledger.unpaid.length?ledger.unpaid.map(x=>`<div><span>${dateOnly(x.date)}</span><strong>${money(x.amount)}</strong></div>`).join(''):'<span class="muted">No unpaid class days.</span>'}</div></details>`;
+  const advanceSection=`<details class="ledger-section"><summary><div><strong>Paid in advance</strong><span>${ledger.advance.length?`${ledger.advance.length} future class day${ledger.advance.length===1?'':'s'}`:'None'}</span></div><span class="ledger-section-badge ${ledger.advance.length?'ok':'neutral'}">${ledger.advance.length?`${ledger.advance.length} day${ledger.advance.length===1?'':'s'}`:'None'}</span></summary><div class="ledger-list">${ledger.advance.length?ledger.advance.map(x=>`<div><span>${dateOnly(x.date)}</span><strong>${money(x.amount)}</strong></div>`).join(''):'<span class="muted">No advance payments.</span>'}</div></details>`;
+  const body=`
+    <div class="history-profile-head">
+      <div class="history-avatar">${esc((s.name||'?').trim().charAt(0).toUpperCase())}</div>
+      <div><strong>${esc(displayStudent(s))}</strong><span>${s.status==='Active'?'Active student':'Inactive student'}</span></div>
+    </div>
+    <div class="history-status-card"><div><span class="muted">Current balance</span><strong class="status-value ${statusClass}">${balanceText}</strong></div><div class="today-status"><span class="muted">Today</span><strong>${todayStatus}</strong></div></div>
+    <div class="history-metrics"><div><span>Total received</span><strong>${money(total)}</strong></div><div><span>Payments</span><strong>${payments.length}</strong></div><div><span>Daily contribution</span><strong>${money(ledger.daily)}</strong></div></div>
+    <div class="history-section-title"><div><strong>Payment history</strong><span>Actual money received</span></div></div>
+    <div class="payment-history-list redesigned-history-list">${paymentCards}</div>
+    <div class="history-ledger-stack">${unpaidSection}${advanceSection}</div>`;
+  modal('Payment History',body,`<div class="modal-actions">${s.status==='Active'?button('+ Record Payment','primary-btn','data-record-student="'+s.id+'"'):''}<button class="ghost-btn" data-close-modal>Close</button></div>`);
+}
+
+async function persistCollectionSessions(){await saveSetting('collectionSessions',state.collectionSessions);}
+async function startCollectionSession(){
+  const date=effectiveTodayKey();if(getCollectionSession(date))return showToast('A collection session already exists for this date.','error');
+  const session={id:uid('sess'),date,status:'open',startedAt:new Date().toISOString(),paymentIds:[],cashCounted:0,difference:0,note:''};state.collectionSessions.unshift(session);await persistCollectionSessions();await log('Started collection session',`Collection session started for ${dateOnly(dateFromKey(date))}.`);render();showToast('Collection session started');
+}
+async function attachPaymentToSession(){
+  const session=getCollectionSession();if(!session||session.status!=='open')return showToast('There is no open collection session today.','error');
+  const assigned=new Set(session.paymentIds||[]);const options=state.contributions.filter(p=>!assigned.has(p.id)).sort((a,b)=>new Date(b.at)-new Date(a.at)).map(p=>{const s=state.students.find(x=>x.id===p.studentId);return `<option value="${p.id}">${esc(displayStudent(s))} — ${money(p.amount)} — ${dateTime(p.at)}</option>`}).join('');
+  if(!options)return showToast('All payment records are already attached to sessions.','error');
+  modal('Add payment to session',`<form id="attachSessionForm"><div class="form-field"><label>Payment</label><select class="select" id="sessionPaymentSelect" required>${options}</select><div class="footer-note">This does not change the payment date or amount. It only groups the payment into today's collection session.</div></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Add to session</button></div></form>`);$('#attachSessionForm').onsubmit=async e=>{e.preventDefault();const id=$('#sessionPaymentSelect').value;if(!session.paymentIds.includes(id))session.paymentIds.push(id);await persistCollectionSessions();await log('Attached payment to collection session',`Payment ${id} attached to ${dateOnly(dateFromKey(session.date))}.`);closeModal();render();showToast('Payment added to session')};
+}
+async function deleteCollectionSession(sessionId,sessionDate){
+  let session=state.collectionSessions.find(x=>x.id===sessionId);
+  if(!session && sessionId){
+    session=state.collectionSessions.find(x=>String(x.id)===String(sessionId));
+  }
+  if(!session && sessionDate){
+    session=state.collectionSessions.find(x=>x.date===sessionDate);
+  }
+  if(!session)return showToast('Collection session not found.','error');
+  const payments=state.contributions.filter(p=>(session.paymentIds||[]).includes(p.id));
+  const isClosed=session.status==='closed';
+  const warning=isClosed?'This session is already closed and reconciled. It will be moved to the Recycle Bin. Its payments will remain as normal payments, detached from the session.':'The session will be moved to the Recycle Bin. Its payments will remain as normal payments, detached from the session.';
+  confirmAction('Delete collection session?',`${warning} ${payments.length} payment${payments.length===1?'':'s'} will remain.` ,async()=>{
+    await put('recycle',{id:uid('del'),originalId:session.id,store:'collectionSessions',type:'Collection Session',data:JSON.parse(JSON.stringify(session)),deletedAt:new Date().toISOString(),deletedBy:ADMIN});
+    for(const payment of payments){if(payment.sessionId===session.id){const updated={...payment};delete updated.sessionId;await put('contributions',updated);}}
+    state.collectionSessions=state.collectionSessions.filter(x=>x.id!==session.id);await persistCollectionSessions();
+    await log('Deleted collection session',`${dateOnly(dateFromKey(session.date))} moved to recycle bin; ${payments.length} payment${payments.length===1?'':'s'} detached and preserved.`);
+    closeModal();await refresh();render();showToast('Session moved to recycle bin. Payments were preserved.');
+  });
+}
+
+async function closeCollectionSession(){
+  const session=getCollectionSession();if(!session||session.status!=='open')return showToast('No open collection session today.','error');
+  const total=sessionTotal(session);modal('Close collection session',`<form id="closeSessionForm"><div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${(session.paymentIds||[]).length}</strong></div><div><span class="muted">Date</span><strong>${dateOnly(dateFromKey(session.date))}</strong></div></div><div class="form-field"><label>Cash counted</label><input class="input" id="sessionCashCounted" type="number" min="0" step="0.01" value="${total.toFixed(2)}" required></div><div class="form-field" style="margin-top:13px"><label>Reconciliation note <span class="muted">(optional)</span></label><textarea class="textarea" id="sessionNote" rows="3" placeholder="e.g. Short by ₱5 — one payment was not yet recorded."></textarea></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Close session</button></div></form>`);$('#closeSessionForm').onsubmit=async e=>{e.preventDefault();const cash=Number($('#sessionCashCounted').value);if(!Number.isFinite(cash)||cash<0)return showToast('Enter a valid cash count.','error');session.cashCounted=cash;session.difference=cash-total;session.note=$('#sessionNote').value.trim();session.status='closed';session.closedAt=new Date().toISOString();await persistCollectionSessions();await log('Closed collection session',`${dateOnly(dateFromKey(session.date))} — collected ${money(total)}, cash counted ${money(cash)}, difference ${money(session.difference)}.`);closeModal();render();showToast(Math.abs(session.difference)<0.001?'Session balanced and closed':'Session closed with a cash difference','success')};
+}
+function renderTodayUnpaid(){
+  const today=effectiveTodayKey();if(!isClassDay(today))return modal('Today’s Collection','<div class="empty">No class today, so there is no daily contribution to collect.</div>');
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const rows=state.students.filter(s=>s.status==='Active').map(s=>{const l=studentLedger(s.id,today);const d=l.due.find(x=>x.date===today);return d?.status==='unpaid'?`<div class="today-unpaid-row"><div><strong>${esc(displayStudent(s))}</strong><span>${l.outstanding?`${money(l.outstanding)} total due`:'Due today'}</span></div>${button('Record '+money(daily),'small-btn primary-btn','data-record-student="'+s.id+'"')}</div>`:''}).filter(Boolean).join('');
+  modal('Not paid today',rows?`<div class="today-unpaid-list">${rows}</div>`:'<div class="empty">Everyone is covered for today. 🎉</div>');
+}
+
+async function quickRecordContribution(studentId,amount){
+  const s=state.students.find(x=>x.id===studentId); if(!s)return;
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);const value=Number(amount);
+  if(!Number.isFinite(value)||value<daily||Math.abs(value/daily-Math.round(value/daily))>1e-9)return showToast(`Amount must be ${money(daily)} or a multiple of it.`,'error');
+  const today=effectiveTodayKey();const already=state.contributions.filter(x=>x.studentId===studentId&&localDateKey(x.at)===today);
+  const save=async()=>{closeModal();manualAllocationModal({studentId,amount:value,at:effectivePaymentISO()});};
+  if(already.length)return confirmAction('Record another payment?',`${esc(displayStudent(s))} already has ${already.length} payment${already.length===1?'':'s'} today. Record another ${money(value)} payment?`,save);
+  await save();
+}
+function updateQuickRecordButtons(){const fixed=Math.max(0.01,Number(state.settings.contributionAmount)||5);const override=$('#quickOverrideToggle')?.checked;const input=$('#quickOverrideAmount');const raw=override?(input?.value||''):fixed;const value=Number(raw);document.querySelectorAll('[data-quick-record]').forEach(btn=>{btn.textContent=`Record ${Number.isFinite(value)&&value>0?money(value):money(fixed)}`})}
+function toLocalInput(iso){const d=new Date(iso);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+function effectivePaymentISO(timeValue){const d=effectiveTodayDate();const now=new Date();let h=now.getHours(),m=now.getMinutes();if(timeValue){const match=String(timeValue).match(/T(\d{2}):(\d{2})/);if(match){h=Number(match[1]);m=Number(match[2]);}}d.setHours(h,m,now.getSeconds(),0);return d.toISOString()}
+async function expenseModal(existing){const x=existing||{id:'',amount:'',category:'Food',description:'',date:new Date().toISOString()};const cats=['Food','Decorations','Supplies','Transportation','Venue','Printing','Miscellaneous'];modal(existing?'Edit Expense':'Add Expense',`<form id="expenseForm"><div class="form-grid"><div class="form-field"><label>Date & time</label><input class="input" id="expenseDate" type="datetime-local" value="${toLocalInput(x.date)}" required></div><div class="form-field"><label>Amount</label><input class="input" id="expenseAmount" type="number" min="0" step="0.01" value="${Number(x.amount)||''}" required></div><div class="form-field"><label>Category</label><select class="select" id="expenseCategory">${cats.map(c=>`<option ${c===x.category?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-field full-width"><label>Description</label><textarea class="textarea" id="expenseDescription" required placeholder="What was this expense for?">${esc(x.description)}</textarea></div></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save expense</button></div></form>`);$('#expenseForm').onsubmit=async e=>{e.preventDefault();const obj={id:x.id||uid('exp'),date:new Date($('#expenseDate').value).toISOString(),amount:Number($('#expenseAmount').value),category:$('#expenseCategory').value,description:$('#expenseDescription').value.trim(),by:ADMIN};await put('expenses',obj);await log(existing?'Updated expense':'Added expense',`${obj.category} — ${money(obj.amount)} — ${obj.description}`);await refresh();closeModal();render();showToast(existing?'Expense updated':'Expense added')};}
+
+function confirmAction(title,text,fn){modal(title,`<p class="muted" style="line-height:1.6">${text}</p>`,`<div class="modal-actions"><button class="ghost-btn" data-close-modal>Cancel</button><button class="danger-btn" id="confirmDanger">Continue</button></div>`);$('#confirmDanger').onclick=async()=>{await fn();closeModal();render()}}
+
+async function exportJSON(){await refresh();const backup={format:'BSCS2C-TREASURY',version:1,exportedAt:new Date().toISOString(),data:{students:state.students,contributions:state.contributions,expenses:state.expenses,activity:state.activity,recycle:state.recycle,settings:state.settings}};download(`bscs2c-treasury-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(backup,null,2),'application/json');showToast('Backup exported')}
+function csvEscape(v){return `"${String(v??'').replace(/"/g,'""')}"`}
+function exportStudentsCSV(){const lines=[['Student Name','Status','Paid','Last Payment'],...state.students.sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{const p=state.contributions.filter(x=>x.studentId===s.id).sort((a,b)=>new Date(b.at)-new Date(a.at))[0];return [s.name,s.status,p?'Yes':'No',p?p.at:'']})];download(`bscs2c-students-${new Date().toISOString().slice(0,10)}.csv`,lines.map(r=>r.map(csvEscape).join(',')).join('\n'),'text/csv;charset=utf-8');showToast('Student CSV exported')}
+function exportCSV(){const lines=[['Type','Student','Amount','Date','Category','Description','Recorded By'],...state.contributions.map(x=>['Contribution',displayStudent(state.students.find(s=>s.id===x.studentId)),x.amount,x.at,'', '',x.by]),...state.expenses.map(x=>['Expense','',x.amount,x.date,x.category,x.description,x.by])];download(`bscs2c-transactions-${new Date().toISOString().slice(0,10)}.csv`,lines.map(r=>r.map(csvEscape).join(',')).join('\n'),'text/csv;charset=utf-8');showToast('CSV exported')}
+function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function handleImport(e){const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='BSCS2C-TREASURY')throw new Error('Invalid backup');confirmAction('Restore backup?',`This will replace the current local data with the selected backup. This cannot be undone unless you have another backup.`,async()=>{for(const store of STORE_NAMES){const old=await getAll(store);for(const x of old)await del(store,x.id)};for(const [store,items] of Object.entries(data.data)){if(store==='settings'){for(const [key,value] of Object.entries(items))await put('settings',{id:key,key,value})}else if(STORE_NAMES.includes(store)){for(const x of items)await put(store,x)}}await refresh();await log('Restored backup','Imported a full JSON treasury backup.');await refresh();showToast('Backup restored')})}catch(err){showToast('Could not read backup file.','error')}e.target.value=''}
+
+async function initializeData(){
+  if(dataInitPromise)return dataInitPromise;
+  dataInitPromise=(async()=>{
+    try{
+      db=await openDB();
+      dbReadyPromise=Promise.resolve(db);
+      await refresh();
+      dataReady=true;
+      if(!$('#appShell')?.classList.contains('hidden')) render();
+      return db;
+    }catch(err){
+      dataReady=false;
+      db=null;
+      dbReadyPromise=Promise.reject(err);
+      dbReadyPromise.catch(()=>{});
+      console.error(err);
+      throw err;
+    }
+  })();
+  return dataInitPromise;
+}
+async function init(){
+  const loginForm=$('#loginForm');
+  const passwordInput=$('#passwordInput');
+  if(loginForm) loginForm.onsubmit=async e=>{
+    e.preventDefault();
+    const password=(passwordInput?.value||'').trim();
+    if(password!==PASSWORD)return showToast('Incorrect password.','error');
+    try{
+      await initializeData();
+      sessionStorage.setItem('bscs2c-unlocked','1');
+      unlock();
+    }catch(err){
+      showToast(err.message||'Local data could not be opened. Close other BSCS2C Treasurer tabs and try again.','error');
+    }
+  };
+  $('#quickContributionBtn').onclick=()=>{if(!dataReady)return showToast('Loading local data… please wait a moment.','error');currentView='quickRecord';render()};
+  $('#togglePassword').onclick=()=>{const input=$('#passwordInput');const visible=input.type==='password';input.type=visible?'text':'password';$('#togglePassword').textContent=visible?'Hide':'Show';$('#togglePassword').setAttribute('aria-label',visible?'Hide password':'Show password')};
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  updateOnline();window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline);
+  if(sessionStorage.getItem('bscs2c-unlocked')==='1'){try{await initializeData();unlock()}catch(err){sessionStorage.removeItem('bscs2c-unlocked');showToast(err.message||'Could not open local data.','error')}}
+}
+function unlock(){$('#loginScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');render()}
+function updateOnline(){const p=$('#onlinePill');if(!navigator.onLine){p.classList.add('offline');p.innerHTML='<i></i> Offline mode'}else{p.classList.remove('offline');p.innerHTML='<i></i> Online · data local'}}
+function lock(){sessionStorage.removeItem('bscs2c-unlocked');$('#appShell').classList.add('hidden');$('#loginScreen').classList.remove('hidden');$('#passwordInput').value='';$('#passwordInput').focus()}
+
+document.addEventListener('click',async e=>{
+  const nav=e.target.closest('[data-view]');
+  if(nav && !dataReady){showToast('Local data is still loading. Please wait a moment.','error');return;}
+  if(!dataReady && !e.target.closest('#menuBtn') && !e.target.closest('#lockBtn')){
+    const action=e.target.closest('[data-action]')?.dataset.action;
+    if(action||e.target.closest('[data-quick-record]')||e.target.closest('[data-payment-history]')||e.target.closest('[data-edit-student]')||e.target.closest('[data-delete-student]')||e.target.closest('[data-record-student]')||e.target.closest('[data-edit-contribution]')||e.target.closest('[data-delete-contribution]')||e.target.closest('[data-edit-expense]')||e.target.closest('[data-delete-expense]')){showToast('Local data is still loading. Please wait a moment.','error');return;}
+  }
+  const nav2=e.target.closest('[data-view]');if(nav){currentView=nav.dataset.view;render();$('#sidebar').classList.remove('open');return}
+  if(e.target.closest('#menuBtn')){$('#sidebar').classList.toggle('open');return}
+  if(e.target.closest('#lockBtn')){lock();return}
+  const action=e.target.closest('[data-action]')?.dataset.action;
+  if(action==='add-student')return studentModal();
+  if(action==='add-contribution')return contributionModal();
+  if(action==='add-expense')return expenseModal();
+  if(action==='quick-record')return currentView='quickRecord',render();
+  if(action==='export-json')return exportJSON();
+  if(action==='export-csv')return exportCSV();
+  if(action==='export-students-csv')return exportStudentsCSV();
+  if(action==='apply-app-date'){const key=$('#appDatePicker')?.value;if(!key||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(key))return showToast('Choose a valid date.','error');await saveSetting('appDateKey',key);await log('Adjusted app date',`App date set to ${dateOnly(dateFromKey(key))}.`);await refresh();render();return showToast(`App date set to ${dateOnly(dateFromKey(key))}.`)}
+  if(action==='start-session')return startCollectionSession();
+  if(action==='close-session')return closeCollectionSession();
+  if(action==='attach-session-payment')return attachPaymentToSession();
+  if(action==='delete-session'){
+    const btn=e.target.closest('[data-session-delete]');
+    const id=btn?.dataset.sessionDelete;
+    const date=btn?.dataset.sessionDate;
+    if(id)return deleteCollectionSession(id,date);
+  }
+  const sr=e.target.closest('[data-session-id]');if(sr)return collectionSessionDetail(sr.dataset.sessionId);
+  if(action==='view-today-unpaid')return renderTodayUnpaid();
+  if(action==='reset-app-date'){await saveSetting('appDateKey','');await log('Reset app date','App date returned to the device date.');await refresh();render();return showToast('App date reset to today.')}
+  if(action==='print-report')return window.print();
+  if(action==='empty-recycle')return confirmAction('Empty recycle bin?','All deleted records will be permanently removed.',async()=>{for(const x of state.recycle)await del('recycle',x.id);await log('Emptied recycle bin',`${state.recycle.length} records permanently removed.`);await refresh()});
+  if(action==='save-settings'){const amount=Number($('#settingAmount').value);if(!Number.isFinite(amount)||amount<=0)return showToast('Daily contribution amount must be greater than zero.','error');const raw=$('#settingNoClass').value.split(',').map(x=>x.trim()).filter(Boolean);const valid=raw.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));await saveSetting('className',$('#settingClass').value.trim()||'BSCS2C');await saveSetting('eventName',$('#settingEvent').value.trim()||'Christmas Party');await saveSetting('contributionAmount',amount);await saveSetting('noClassDates',[...new Set(valid)].sort());await log('Updated settings','Class, event, daily contribution amount, or no-class dates changed.');await refresh();render();return showToast(valid.length===raw.length?'Settings saved':'Settings saved; invalid no-class dates were ignored.')}
+  const ph=e.target.closest('[data-payment-history]');if(ph)return paymentHistoryModal(ph.dataset.paymentHistory);
+  const qr=e.target.closest('[data-quick-record]');if(qr){const override=$('#quickOverrideToggle')?.checked;const input=$('#quickOverrideAmount');const raw=override?(input?.value||''):state.settings.contributionAmount;if(override&&!String(raw).trim())return showToast('Enter an override amount first.','error');return quickRecordContribution(qr.dataset.quickRecord,raw)}
+  const es=e.target.closest('[data-edit-student]');if(es){const s=state.students.find(x=>x.id===es.dataset.editStudent);return studentModal(s)}
+  const ds=e.target.closest('[data-delete-student]');if(ds){const s=state.students.find(x=>x.id===ds.dataset.deleteStudent);return confirmAction('Delete student?',`Move ${esc(s.name)} to the recycle bin?`,async()=>{await softDelete('students',s,'Student');await refresh()})}
+  const rs=e.target.closest('[data-record-student]');if(rs)return contributionModal(null,rs.dataset.recordStudent);
+  const ec=e.target.closest('[data-edit-contribution]');if(ec)return contributionModal(state.contributions.find(x=>x.id===ec.dataset.editContribution));
+  const dc=e.target.closest('[data-delete-contribution]');if(dc){const x=state.contributions.find(x=>x.id===dc.dataset.deleteContribution);return confirmAction('Delete contribution?',`Move this ${money(x.amount)} payment to the recycle bin?`,async()=>{await softDelete('contributions',x,'Contribution');await refresh()})}
+  const ee=e.target.closest('[data-edit-expense]');if(ee)return expenseModal(state.expenses.find(x=>x.id===ee.dataset.editExpense));
+  const de=e.target.closest('[data-delete-expense]');if(de){const x=state.expenses.find(x=>x.id===de.dataset.deleteExpense);return confirmAction('Delete expense?',`Move this ${money(x.amount)} expense to the recycle bin?`,async()=>{await softDelete('expenses',x,'Expense');await refresh()})}
+  const rr=e.target.closest('[data-restore]');if(rr){const r=state.recycle.find(x=>x.id===rr.dataset.restore);if(!r)return; if(r.type==='Collection Session'){const restored=r.data;if(getCollectionSession(restored.date))return showToast('A collection session already exists for that date. Delete or remove it first.','error');state.collectionSessions.unshift(restored);await persistCollectionSessions();for(const id of (restored.paymentIds||[])){const payment=state.contributions.find(p=>p.id===id);if(payment&&!payment.sessionId){await put('contributions',{...payment,sessionId:restored.id});}}await del('recycle',r.id);await log('Restored collection session',`${dateOnly(dateFromKey(restored.date))} restored from recycle bin with ${restored.paymentIds?.length||0} preserved payment(s).`);await refresh();render();return showToast('Collection session restored')} await put(r.store,r.data);await del('recycle',r.id);await log('Restored record',`${r.type} restored from recycle bin.`);await refresh();render();return showToast('Record restored')}
+  const pp=e.target.closest('[data-purge]');if(pp){const r=state.recycle.find(x=>x.id===pp.dataset.purge);return confirmAction('Permanently delete?',`This ${r.type} cannot be recovered after deletion.`,async()=>{await del('recycle',r.id);await log('Permanently deleted record',`${r.type} permanently removed.`);await refresh()})}
+});
+
+document.addEventListener('DOMContentLoaded',init);
