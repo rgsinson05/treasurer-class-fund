@@ -2091,3 +2091,58 @@ button,
     width: 100%;
   }
 }
+.noclass-add-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.noclass-add-row .input {
+  flex: 1;
+  min-width: 130px;
+}
+.noclass-add-row #noClassLabelInput {
+  flex: 1.4;
+  min-width: 150px;
+}
+.noclass-add-row #addNoClassDateBtn {
+  flex: 0 0 auto;
+}
+.noclass-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+.noclass-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  background: rgba(7, 12, 25, 0.32);
+  border-radius: 12px;
+}
+.noclass-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.noclass-row-info strong {
+  font-size: 12px;
+}
+.noclass-row-info span {
+  font-size: 10.5px;
+  color: #69758f;
+}
+@media (max-width: 520px) {
+  .noclass-add-row {
+    flex-direction: column;
+  }
+  .noclass-add-row .input,
+  .noclass-add-row #addNoClassDateBtn {
+    width: 100%;
+  }
+}
