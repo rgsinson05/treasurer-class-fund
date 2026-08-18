@@ -79,7 +79,7 @@ function collectionSessionDetail(sessionId){
   const session=state.collectionSessions.find(x=>x.id===sessionId);if(!session)return;
   const ids=new Set(session.paymentIds||[]);const payments=state.contributions.filter(x=>ids.has(x.id)).sort((a,b)=>new Date(b.at)-new Date(a.at));const total=sessionTotal(session);
   const rows=payments.length?payments.map(p=>`<div class="session-payment-row"><div><strong>${esc(displayStudent(state.students.find(s=>s.id===p.studentId)))}</strong><span>${dateTime(p.at)} · ${esc(p.by||ADMIN)}</span></div><strong>${money(p.amount)}</strong></div>`).join(''):'<div class="empty">No payments attached to this session.</div>';
-  modal(`Session · ${dateOnly(dateFromKey(session.date))}`,`<div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${payments.length}</strong></div><div><span class="muted">Status</span><strong>${session.status==='open'?'Open':'Closed'}</strong></div>${session.status==='closed'?`<div><span class="muted">Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span class="muted">Difference</span><strong class="${Math.abs(Number(session.difference||0))<0.001?'good-text':'warn-text'}">${money(session.difference)}</strong></div>`:''}</div><div class="history-section-title"><div><strong>Payments in this session</strong><span>Actual money collected during the session</span></div></div><div class="session-payment-list">${rows}</div>${session.note?`<div class="footer-note" style="margin-top:12px">Note: ${esc(session.note)}</div>`:''}`,`<div class="modal-actions">${session.status==='open'?button('Add existing payment','ghost-btn','data-action="attach-session-payment"'):''}${button('Delete session','danger-btn','data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"')}<button class="ghost-btn" data-close-modal>Close</button></div>`);
+  modal(`Session · ${dateOnly(dateFromKey(session.date))}`,`<div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${payments.length}</strong></div><div><span class="muted">Status</span><strong>${session.status==='open'?'Open':'Closed'}</strong></div>${session.status==='closed'?`<div><span class="muted">Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span class="muted">Difference</span><strong class="${Math.abs(Number(session.difference||0))<0.001?'good-text':'warn-text'}">${money(session.difference)}</strong></div>`:''}</div><div class="history-section-title"><div><strong>Payments in this session</strong><span>Actual money collected during the session</span></div></div><div class="session-payment-list">${rows}</div>${session.note?`<div class="footer-note" style="margin-top:12px">Note: ${esc(session.note)}</div>`:''}`,`<div class="modal-actions">${session.status==='open'?button('Add existing payment','ghost-btn','data-action="attach-session-payment"'):''}${button('Delete session','danger-btn',`data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"`)}<button class="ghost-btn" data-close-modal>Close</button></div>`);
 }
 
 function renderCollectionSessions(){
@@ -156,10 +156,14 @@ function isNoClassDate(key){return Array.isArray(state.settings.noClassDates)&&s
 function isClassDay(key){const d=dateFromKey(key);const day=d.getDay();return day!==0&&day!==6&&!isNoClassDate(key)}
 function addClassDay(startKey,offset){let key=startKey,count=0,guard=0;while(guard++<3700){if(isClassDay(key)){if(count===offset)return key;count++;}key=nextDateKey(key)}return startKey}
 function classDaysThrough(startKey,endKey){const out=[];let key=startKey,guard=0;while(key<=endKey&&guard++<3700){if(isClassDay(key))out.push(key);key=nextDateKey(key)}return out}
+function classStartKey(){
+  if(!state.students.length) return effectiveTodayKey();
+  return state.students.map(x=>localDateKey(x.createdAt||new Date())).reduce((min,d)=>d<min?d:min);
+}
 function studentLedger(studentId,asOfKey=effectiveTodayKey()){
   const s=state.students.find(x=>x.id===studentId);if(!s)return {due:[],paid:[],unpaid:[],advance:[],outstanding:0,totalReceived:0,allocByPayment:{}};
   const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);
-  const start=localDateKey(s.createdAt||new Date());
+  const start=classStartKey();
   const payments=state.contributions.filter(x=>x.studentId===studentId).sort((a,b)=>new Date(a.at)-new Date(b.at));
   const allocatedDates=[];const allocByPayment={};
   for(const p of payments){
