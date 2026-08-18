@@ -18,6 +18,9 @@ let dataInitPromise = null;
 let currentView = "dashboard";
 let quickSessionTotal = 0;
 let quickSessionCount = 0;
+let contributionPage = 1;
+const CONTRIBUTION_PAGE_SIZE = 15;
+const ACTIVITY_RECENT_LIMIT = 20;
 let state = {
   students: [],
   contributions: [],
@@ -425,7 +428,7 @@ function studentsTable(filter = "", status = "all") {
     )
     .sort((a, b) => a.name.localeCompare(b.name));
   if (!rows.length) return `<div class="empty">No students found.</div>`;
-  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th><th>Actions</th></tr></thead><tbody>${rows
+  return `<div class="table-wrap scroll-box"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th><th>Actions</th></tr></thead><tbody>${rows
     .map((s) => {
       const payments = state.contributions
         .filter((x) => x.studentId === s.id)
@@ -488,6 +491,7 @@ function renderQuickRecord(q = "") {
   }</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div></section></div>`;
 }
 function renderContributions() {
+  contributionPage = 1;
   const total = state.contributions.reduce((a, x) => a + Number(x.amount), 0);
   return `<div class="view"><section class="cards">${stat("Collected", money(total), "All recorded contributions", "₱")}${stat("Transactions", state.contributions.length, "Payment records", "≡")}${stat("Fixed amount", money(state.settings.contributionAmount), "Christmas Party", "◎")}${stat("Contributors", new Set(state.contributions.map((x) => x.studentId)).size, "Unique students", "✓")}</section><section class="panel glass"><div class="panel-header"><div><h3>Contribution records</h3><span class="muted">${esc(state.settings.eventName)}</span></div>${button("+ Record Contribution", "primary-btn", 'data-action="add-contribution"')}</div><div class="search-row"><input class="input search-input" id="contributionSearch" placeholder="Search student..."><input class="input" type="date" id="contributionDateFilter" style="width:180px"></div><div id="contributionTable"></div></section></div>`;
 }
@@ -501,9 +505,31 @@ function contributionTable(q = "", date = "") {
         (!date || x.at.slice(0, 10) === date)
       );
     });
-  if (!rows.length)
+  if (!rows.length) {
+    contributionPage = 1;
     return `<div class="empty">No contribution records found.</div>`;
-  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Amount</th><th>Date/time</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${esc(displayStudent(state.students.find((s) => s.id === x.studentId)))}</td><td><strong>${money(x.amount)}</strong></td><td>${dateTime(x.at)}</td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-contribution="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-contribution="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div>`;
+  }
+  const pageCount = Math.max(1, Math.ceil(rows.length / CONTRIBUTION_PAGE_SIZE));
+  if (contributionPage > pageCount) contributionPage = pageCount;
+  if (contributionPage < 1) contributionPage = 1;
+  const startIdx = (contributionPage - 1) * CONTRIBUTION_PAGE_SIZE;
+  const pageRows = rows.slice(startIdx, startIdx + CONTRIBUTION_PAGE_SIZE);
+  const table = `<div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Amount</th><th>Date/time</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${pageRows.map((x) => `<tr><td>${esc(displayStudent(state.students.find((s) => s.id === x.studentId)))}</td><td><strong>${money(x.amount)}</strong></td><td>${dateTime(x.at)}</td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-contribution="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-contribution="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div>`;
+  const from = startIdx + 1;
+  const to = startIdx + pageRows.length;
+  const pager =
+    pageCount > 1
+      ? `<div class="pager">${button("‹ Prev", "small-btn", `data-contrib-page="prev"${contributionPage <= 1 ? " disabled" : ""}`)}<span class="pager-info">Page ${contributionPage} of ${pageCount} · ${from}–${to} of ${rows.length}</span>${button("Next ›", "small-btn", `data-contrib-page="next"${contributionPage >= pageCount ? " disabled" : ""}`)}</div>`
+      : `<div class="pager"><span class="pager-info">${rows.length} record${rows.length === 1 ? "" : "s"}</span></div>`;
+  return `${table}${pager}`;
+}
+function refreshContributionTable() {
+  const el = $("#contributionTable");
+  if (!el) return;
+  el.innerHTML = contributionTable(
+    $("#contributionSearch")?.value || "",
+    $("#contributionDateFilter")?.value || "",
+  );
 }
 
 function renderExpenses() {
@@ -559,10 +585,25 @@ function renderRecycle() {
   return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Recycle Bin</h3><span class="muted">${rows.length} deleted record(s)</span></div>${button("Empty permanently", "danger-btn", 'data-action="empty-recycle"')}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Type</th><th>Details</th><th>Deleted</th><th>Actions</th></tr></thead><tbody>${rows.map((x) => `<tr><td><span class="badge deleted">${esc(x.type)}</span></td><td>${esc(x.type === "Contribution" ? `${displayStudent(state.students.find((s) => s.id === x.data.studentId))} — ${money(x.data.amount)}` : x.data.name || x.data.description || x.originalId)}</td><td>${dateTime(x.deletedAt)}</td><td><div class="actions">${button("Restore", "small-btn", 'data-restore="' + x.id + '"')}${button("Delete forever", "small-btn danger", 'data-purge="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div></section></div>`;
 }
 function renderActivity() {
-  const rows = [...state.activity]
-    .sort((a, b) => new Date(b.at) - new Date(a.at))
-    .slice(0, 100);
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Activity Log</h3><span class="muted">Audit history for this browser</span></div></div>${rows.length ? rows.map((x) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join("") : '<div class="empty">No activity recorded yet.</div>'}</section></div>`;
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Activity Log</h3><span class="muted">Audit history for this browser</span></div></div><div class="search-row"><input class="input search-input" id="activitySearch" placeholder="Search action, details, or user..."><input class="input" type="date" id="activityDateFilter" style="width:180px"></div><div id="activityList"></div></section></div>`;
+}
+function activityList(q = "", date = "") {
+  const query = q.trim().toLowerCase();
+  const filtering = !!query || !!date;
+  let rows = [...state.activity].sort((a, b) => new Date(b.at) - new Date(a.at));
+  if (query)
+    rows = rows.filter((x) =>
+      `${x.action} ${x.details} ${x.by}`.toLowerCase().includes(query),
+    );
+  if (date) rows = rows.filter((x) => (x.at || "").slice(0, 10) === date);
+  const total = rows.length;
+  const shown = filtering ? rows.slice(0, 200) : rows.slice(0, ACTIVITY_RECENT_LIMIT);
+  if (!shown.length)
+    return `<div class="empty">${filtering ? "No matching activity found." : "No activity recorded yet."}</div>`;
+  const note = filtering
+    ? `<div class="footer-note">${total} matching entr${total === 1 ? "y" : "ies"}${total > shown.length ? ` · showing first ${shown.length}` : ""}.</div>`
+    : `<div class="footer-note">Showing the ${shown.length} most recent of ${total}. Search or pick a date to find older entries.</div>`;
+  return `${note}${shown.map((x) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join("")}`;
 }
 function renderSettings() {
   return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Access lock</strong><p>Password: BSCS2C · local UI lock only.</p></div><span class="badge active">Enabled</span></div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
@@ -607,20 +648,15 @@ function bindViewEvents() {
     );
   });
   if ($("#studentsTable")) $("#studentsTable").innerHTML = studentsTable();
-  $("#contributionSearch")?.addEventListener("input", (e) => {
-    $("#contributionTable").innerHTML = contributionTable(
-      e.target.value,
-      $("#contributionDateFilter").value,
-    );
+  $("#contributionSearch")?.addEventListener("input", () => {
+    contributionPage = 1;
+    refreshContributionTable();
   });
-  $("#contributionDateFilter")?.addEventListener("change", (e) => {
-    $("#contributionTable").innerHTML = contributionTable(
-      $("#contributionSearch").value,
-      e.target.value,
-    );
+  $("#contributionDateFilter")?.addEventListener("change", () => {
+    contributionPage = 1;
+    refreshContributionTable();
   });
-  if ($("#contributionTable"))
-    $("#contributionTable").innerHTML = contributionTable();
+  if ($("#contributionTable")) refreshContributionTable();
   $("#expenseSearch")?.addEventListener("input", (e) => {
     $("#expenseTable").innerHTML = expenseTable(
       e.target.value,
@@ -634,6 +670,19 @@ function bindViewEvents() {
     );
   });
   if ($("#expenseTable")) $("#expenseTable").innerHTML = expenseTable();
+  $("#activitySearch")?.addEventListener("input", (e) => {
+    $("#activityList").innerHTML = activityList(
+      e.target.value,
+      $("#activityDateFilter").value,
+    );
+  });
+  $("#activityDateFilter")?.addEventListener("change", (e) => {
+    $("#activityList").innerHTML = activityList(
+      $("#activitySearch").value,
+      e.target.value,
+    );
+  });
+  if ($("#activityList")) $("#activityList").innerHTML = activityList();
   $("#importFile")?.addEventListener("change", handleImport);
   $("#mergeFile")?.addEventListener("change", handleMergeFile);
   $("#addNoClassDateBtn")?.addEventListener("click", addNoClassDate);
@@ -1951,6 +2000,13 @@ document.addEventListener("click", async (e) => {
   }
   if (e.target.closest("#lockBtn")) {
     lock();
+    return;
+  }
+  const cpage = e.target.closest("[data-contrib-page]");
+  if (cpage) {
+    if (cpage.disabled) return;
+    contributionPage += cpage.dataset.contribPage === "next" ? 1 : -1;
+    refreshContributionTable();
     return;
   }
   const action = e.target.closest("[data-action]")?.dataset.action;

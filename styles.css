@@ -2331,3 +2331,40 @@ button,
     text-align: center;
   }
 }
+
+/* Fixed-height scroll box with sticky header (Students) */
+.table-wrap.scroll-box {
+  max-height: 60vh;
+}
+.table-wrap.scroll-box thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #121a2c;
+}
+@media (max-width: 800px) {
+  .table-wrap.scroll-box {
+    max-height: 62vh;
+  }
+}
+
+/* Transactions pagination */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pager-info {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+}
+.pager .small-btn {
+  min-width: 78px;
+}
+.pager .small-btn:disabled {
+  opacity: 0.4;
+}
