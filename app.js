@@ -128,7 +128,7 @@ function expenseBreakdown(){const map={};state.expenses.forEach(x=>map[x.categor
 
 function renderRecycle(){const rows=[...state.recycle].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));if(!rows.length)return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Recycle Bin</h3><span class="muted">Deleted records can be restored.</span></div></div><div class="empty">Recycle bin is empty.</div></section></div>`;return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Recycle Bin</h3><span class="muted">${rows.length} deleted record(s)</span></div>${button('Empty permanently','danger-btn','data-action="empty-recycle"')}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Type</th><th>Details</th><th>Deleted</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>`<tr><td><span class="badge deleted">${esc(x.type)}</span></td><td>${esc(x.type==='Contribution' ? `${displayStudent(state.students.find(s=>s.id===x.data.studentId))} — ${money(x.data.amount)}` : (x.data.name||x.data.description||x.originalId))}</td><td>${dateTime(x.deletedAt)}</td><td><div class="actions">${button('Restore','small-btn','data-restore="'+x.id+'"')}${button('Delete forever','small-btn danger','data-purge="'+x.id+'"')}</div></td></tr>`).join('')}</tbody></table></div></section></div>`}
 function renderActivity(){const rows=[...state.activity].sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,100);return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Activity Log</h3><span class="muted">Audit history for this browser</span></div></div>${rows.length?rows.map(x=>`<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join(''):'<div class="empty">No activity recorded yet.</div>'}</section></div>`}
-function renderSettings(){const holidays=Array.isArray(state.settings.noClassDates)?state.settings.noClassDates:[];return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount)||5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div><div class="form-field" style="margin-top:13px"><label>No-class / holiday dates</label><textarea class="textarea" id="settingNoClass" rows="4" placeholder="2026-08-21, 2026-08-31">${esc(holidays.join(', '))}</textarea><div class="footer-note">Use YYYY-MM-DD dates separated by commas. Weekends are automatically skipped.</div></div><button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="setting-row"><div><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div>${button('JSON','ghost-btn','data-action="export-json"')}</div><div class="setting-row"><div><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p></div><label class="ghost-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="setting-row"><div><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div>${button('CSV','ghost-btn','data-action="export-csv"')}${button('Students CSV','ghost-btn','data-action="export-students-csv"')}</div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Access lock</strong><p>Password: BSCS2C · local UI lock only.</p></div><span class="badge active">Enabled</span></div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`}
+function renderSettings(){const holidays=Array.isArray(state.settings.noClassDates)?state.settings.noClassDates:[];return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount)||5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div><div class="form-field" style="margin-top:13px"><label>No-class / holiday dates</label><textarea class="textarea" id="settingNoClass" rows="4" placeholder="2026-08-21, 2026-08-31">${esc(holidays.join(', '))}</textarea><div class="footer-note">Use YYYY-MM-DD dates separated by commas. Weekends are automatically skipped.</div></div><button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="setting-row"><div><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div>${button('JSON','ghost-btn','data-action="export-json"')}</div><div class="setting-row"><div><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p></div><label class="ghost-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="setting-row"><div><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant) into this device, matched to your existing students.</p></div><label class="ghost-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="setting-row"><div><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div>${button('CSV','ghost-btn','data-action="export-csv"')}${button('Students CSV','ghost-btn','data-action="export-students-csv"')}</div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Access lock</strong><p>Password: BSCS2C · local UI lock only.</p></div><span class="badge active">Enabled</span></div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`}
 
 function bindViewEvents(){
   $('#quickRecordSearch')?.addEventListener('input',e=>{const q=e.target.value;const container=$('#viewContainer');container.innerHTML=renderQuickRecord(q);bindViewEvents();const input=$('#quickRecordSearch');if(input){input.focus();input.setSelectionRange(q.length,q.length)}});
@@ -144,6 +144,7 @@ function bindViewEvents(){
   $('#expenseDateFilter')?.addEventListener('change',e=>{$('#expenseTable').innerHTML=expenseTable($('#expenseSearch').value,e.target.value)});
   if($('#expenseTable')) $('#expenseTable').innerHTML=expenseTable();
   $('#importFile')?.addEventListener('change',handleImport);
+  $('#mergeFile')?.addEventListener('change',handleMergeFile);
 }
 
 function displayStudent(s){return s?.alias?`${s.name} — ${s.alias}`:(s?.name||'Unknown student')}
@@ -316,6 +317,80 @@ function csvEscape(v){return `"${String(v??'').replace(/"/g,'""')}"`}
 function exportStudentsCSV(){const lines=[['Student Name','Status','Paid','Last Payment'],...state.students.sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{const p=state.contributions.filter(x=>x.studentId===s.id).sort((a,b)=>new Date(b.at)-new Date(a.at))[0];return [s.name,s.status,p?'Yes':'No',p?p.at:'']})];download(`bscs2c-students-${new Date().toISOString().slice(0,10)}.csv`,lines.map(r=>r.map(csvEscape).join(',')).join('\n'),'text/csv;charset=utf-8');showToast('Student CSV exported')}
 function exportCSV(){const lines=[['Type','Student','Amount','Date','Category','Description','Recorded By'],...state.contributions.map(x=>['Contribution',displayStudent(state.students.find(s=>s.id===x.studentId)),x.amount,x.at,'', '',x.by]),...state.expenses.map(x=>['Expense','',x.amount,x.date,x.category,x.description,x.by])];download(`bscs2c-transactions-${new Date().toISOString().slice(0,10)}.csv`,lines.map(r=>r.map(csvEscape).join(',')).join('\n'),'text/csv;charset=utf-8');showToast('CSV exported')}
 function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function handleMergeFile(e){const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='BSCS2C-TREASURY')throw new Error('Invalid backup');const importStudents=Array.isArray(data.data?.students)?data.data.students:[];const importContributions=Array.isArray(data.data?.contributions)?data.data.contributions:[];if(!importStudents.length)throw new Error('No students found in file');mergePreviewModal(importStudents,importContributions)}catch(err){showToast('Could not read that backup file.','error')}e.target.value=''}
+function normalizeName(n){return String(n||'').trim().toLowerCase().replace(/\s+/g,' ')}
+function findLocalStudentMatch(importStudent){const n=normalizeName(importStudent.name);const a=normalizeName(importStudent.alias);return state.students.find(s=>normalizeName(s.name)===n||(a&&normalizeName(s.alias)===a)||(a&&normalizeName(s.name)===a)||normalizeName(s.alias)===n)||null}
+function mergePreviewModal(importStudents,importContributions){
+  const localOptions=state.students.slice().sort((a,b)=>displayStudent(a).localeCompare(displayStudent(b)));
+  const rows=importStudents.map(is=>{
+    const payments=importContributions.filter(c=>c.studentId===is.id);
+    const total=payments.reduce((a,x)=>a+(Number(x.amount)||0),0);
+    const match=findLocalStudentMatch(is);
+    const optionsHtml=[`<option value="__new__">+ Create as new student</option>`,`<option value="__skip__">Skip (don't import)</option>`,...localOptions.map(s=>`<option value="${s.id}" ${match&&match.id===s.id?'selected':''}>${esc(displayStudent(s))}</option>`)].join('');
+    return `<div class="merge-row" data-import-student="${is.id}"><div class="merge-row-info"><strong>${esc(displayStudent(is))}</strong><span>${payments.length} payment${payments.length===1?'':'s'} · ${money(total)}</span></div><select class="select merge-map-select" data-import-student-select="${is.id}">${optionsHtml}</select></div>`;
+  }).join('');
+  const totalPayments=importContributions.length;
+  modal('Merge from another device',`<p class="footer-note" style="margin-bottom:14px">Match each name to your existing student, or create it new. Payments will be recalculated day-by-day so balances stay accurate.</p><div class="merge-list">${rows}</div><p class="footer-note" style="margin-top:14px">${totalPayments} payment record(s) found in this file.</p>`,`<div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn" id="confirmMerge">Merge payments</button></div>`);
+  $('#confirmMerge').onclick=async()=>{
+    const mapping={};
+    for(const is of importStudents){
+      const sel=$(`[data-import-student-select="${is.id}"]`);
+      mapping[is.id]=sel?sel.value:'__skip__';
+    }
+    await performMerge(importStudents,importContributions,mapping);
+    closeModal();
+  };
+}
+async function performMerge(importStudents,importContributions,mapping){
+  const resolved={};
+  for(const is of importStudents){
+    const choice=mapping[is.id];
+    if(choice==='__skip__')continue;
+    if(choice==='__new__'){
+      const newStudent={id:uid('stu'),name:is.name,alias:is.alias||'',status:is.status||'Active',createdAt:is.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+      await put('students',newStudent);state.students.push(newStudent);
+      resolved[is.id]=newStudent.id;
+    } else {
+      resolved[is.id]=choice;
+    }
+  }
+  const toImport=importContributions.filter(c=>resolved[c.studentId]).sort((a,b)=>new Date(a.at)-new Date(b.at));
+  let imported=0,skippedDuplicate=0;
+  for(const c of toImport){
+    const localStudentId=resolved[c.studentId];
+    const amount=Number(c.amount)||0;if(amount<=0)continue;
+    const isDuplicate=state.contributions.some(x=>x.studentId===localStudentId&&Math.abs(Number(x.amount)-amount)<0.001&&Math.abs(new Date(x.at)-new Date(c.at))<60000);
+    if(isDuplicate){skippedDuplicate++;continue;}
+    const allocations=autoAllocateAsOf(localStudentId,amount,c.at);
+    const obj={id:uid('pay'),studentId:localStudentId,amount,at:c.at,recordedAt:c.recordedAt||c.at,by:c.by?`${c.by} (merged)`:'Merged import',event:c.event||state.settings.eventName,allocations,unallocatedAmount:0,sessionId:''};
+    state.contributions.push(obj);await put('contributions',obj);imported++;
+  }
+  await refresh();
+  await log('Merged payments from device',`Imported ${imported} payment(s)${skippedDuplicate?`, skipped ${skippedDuplicate} duplicate(s)`:''} from another device's backup.`);
+  await refresh();render();
+  showToast(imported?`Merged ${imported} payment${imported===1?'':'s'}${skippedDuplicate?` (${skippedDuplicate} duplicate${skippedDuplicate===1?'':'s'} skipped)`:''}`:'No new payments to merge');
+}
+function allocationInfoAsOf(studentId,amount,atISO){
+  const daily=Math.max(0.01,Number(state.settings.contributionAmount)||5);
+  const key=localDateKey(atISO);
+  const before=ledgerBeforePayment(studentId,'__merge__',atISO);
+  const past=before.unpaid.filter(x=>x.date<key);
+  const today=before.due.find(x=>x.date===key&&x.status==='unpaid');
+  return {daily,key,past,today,maxPast:past.length*daily,maxToday:today?daily:0};
+}
+function autoAllocateAsOf(studentId,amount,atISO){
+  const info=allocationInfoAsOf(studentId,amount,atISO);const daily=info.daily;
+  let remaining=amount;
+  const pastAmount=Math.min(remaining,info.maxPast);remaining-=pastAmount;
+  const todayAmount=Math.min(remaining,info.maxToday);remaining-=todayAmount;
+  const advanceAmount=Math.max(0,remaining);
+  const allocations=[];let pastRemaining=pastAmount;
+  for(const d of info.past){if(pastRemaining+1e-9<daily)break;allocations.push({date:d.date,amount:daily,status:'paid'});pastRemaining-=daily;}
+  if(todayAmount>0)allocations.push({date:info.key,amount:daily,status:'paid'});
+  let cursor=addClassDay(info.key,1);let remainingAdvance=advanceAmount;
+  while(remainingAdvance+1e-9>=daily){allocations.push({date:cursor,amount:daily,status:'advance'});remainingAdvance-=daily;cursor=addClassDay(cursor,1);}
+  return allocations;
+}
 async function handleImport(e){const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='BSCS2C-TREASURY')throw new Error('Invalid backup');confirmAction('Restore backup?',`This will replace the current local data with the selected backup. This cannot be undone unless you have another backup.`,async()=>{for(const store of STORE_NAMES){const old=await getAll(store);for(const x of old)await del(store,x.id)};for(const [store,items] of Object.entries(data.data)){if(store==='settings'){for(const [key,value] of Object.entries(items))await put('settings',{id:key,key,value})}else if(STORE_NAMES.includes(store)){for(const x of items)await put(store,x)}}await refresh();await log('Restored backup','Imported a full JSON treasury backup.');await refresh();showToast('Backup restored')})}catch(err){showToast('Could not read backup file.','error')}e.target.value=''}
 
 async function initializeData(){
