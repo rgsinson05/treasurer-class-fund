@@ -2146,3 +2146,56 @@ button,
     width: 100%;
   }
 }
+.quick-session-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(85, 214, 190, 0.22);
+  background: rgba(85, 214, 190, 0.06);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.quick-session-total > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.quick-session-total > div strong {
+  font-size: 18px;
+  color: #73e6cf;
+}
+.quick-session-total > span.muted {
+  font-size: 11px;
+}
+.toast-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.toast-action span {
+  flex: 1;
+  min-width: 0;
+}
+.toast-action-btn {
+  flex: 0 0 auto;
+  background: rgba(139, 124, 255, 0.18);
+  color: #c4bdff;
+  border: 1px solid rgba(139, 124, 255, 0.3);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.toast-action-btn:hover {
+  background: rgba(139, 124, 255, 0.28);
+}
+@media (max-width: 650px) {
+  .quick-session-total {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
