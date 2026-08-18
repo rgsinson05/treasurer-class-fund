@@ -606,7 +606,7 @@ function activityList(q = "", date = "") {
   return `${note}${shown.map((x) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join("")}`;
 }
 function renderSettings() {
-  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Access lock</strong><p>Password: BSCS2C · local UI lock only.</p></div><span class="badge active">Enabled</span></div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
+  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
 }
 
 function bindViewEvents() {
@@ -1862,6 +1862,91 @@ async function handleImport(e) {
   e.target.value = "";
 }
 
+function isCustomPasswordSet() {
+  const rec = state.settings.passwordAuth;
+  return (
+    !!rec &&
+    typeof rec === "object" &&
+    (rec.algo === "sha256" ? !!rec.hash : !!rec.value)
+  );
+}
+function bytesToHex(buffer) {
+  return [...new Uint8Array(buffer)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+function randomSaltHex(len = 16) {
+  if (window.crypto?.getRandomValues) {
+    const arr = new Uint8Array(len);
+    window.crypto.getRandomValues(arr);
+    return bytesToHex(arr.buffer);
+  }
+  let s = "";
+  for (let i = 0; i < len * 2; i++)
+    s += Math.floor(Math.random() * 16).toString(16);
+  return s;
+}
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const digest = await window.crypto.subtle.digest("SHA-256", data);
+  return bytesToHex(digest);
+}
+async function makePasswordRecord(password) {
+  const pw = String(password);
+  if (window.crypto?.subtle) {
+    const salt = randomSaltHex(16);
+    const hash = await sha256Hex(`${salt}:${pw}`);
+    return { algo: "sha256", salt, hash };
+  }
+  return { algo: "plain", value: pw };
+}
+function hexEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length)
+    return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+async function verifyPassword(input) {
+  const pw = String(input ?? "").trim();
+  const rec = state.settings.passwordAuth;
+  if (!rec || typeof rec !== "object") return pw === PASSWORD;
+  if (rec.algo === "sha256") {
+    if (!window.crypto?.subtle) return false;
+    const hash = await sha256Hex(`${rec.salt}:${pw}`);
+    return hexEqual(hash, rec.hash);
+  }
+  if (rec.algo === "plain") return pw === String(rec.value);
+  return false;
+}
+async function changePasswordModal() {
+  modal(
+    "Change treasurer password",
+    `<form id="passwordForm"><div class="form-field"><label>Current password</label><input class="input" id="pwCurrent" type="password" autocomplete="current-password" placeholder="Enter current password" required></div><div class="form-field" style="margin-top:13px"><label>New password</label><input class="input" id="pwNew" type="password" autocomplete="new-password" placeholder="At least 4 characters" required></div><div class="form-field" style="margin-top:13px"><label>Confirm new password</label><input class="input" id="pwConfirm" type="password" autocomplete="new-password" placeholder="Re-enter new password" required></div><div class="footer-note">Stored only on this device, scrambled. There is no recovery if you forget it — keep a JSON backup.</div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Update password</button></div></form>`,
+  );
+  $("#passwordForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const current = $("#pwCurrent").value;
+    const next = String($("#pwNew").value || "").trim();
+    const confirm = String($("#pwConfirm").value || "").trim();
+    if (!(await verifyPassword(current)))
+      return showToast("Current password is incorrect.", "error");
+    if (next.length < 4)
+      return showToast("New password must be at least 4 characters.", "error");
+    if (next !== confirm)
+      return showToast("New passwords do not match.", "error");
+    const rec = await makePasswordRecord(next);
+    await saveSetting("passwordAuth", rec);
+    await log(
+      "Changed treasurer password",
+      "The dashboard unlock password was updated.",
+    );
+    await refresh();
+    closeModal();
+    render();
+    showToast("Password updated");
+  };
+}
 async function initializeData() {
   if (dataInitPromise) return dataInitPromise;
   dataInitPromise = (async () => {
@@ -1890,19 +1975,19 @@ async function init() {
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
       const password = (passwordInput?.value || "").trim();
-      if (password !== PASSWORD)
-        return showToast("Incorrect password.", "error");
       try {
         await initializeData();
-        sessionStorage.setItem("bscs2c-unlocked", "1");
-        unlock();
       } catch (err) {
-        showToast(
+        return showToast(
           err.message ||
             "Local data could not be opened. Close other BSCS2C Treasurer tabs and try again.",
           "error",
         );
       }
+      if (!(await verifyPassword(password)))
+        return showToast("Incorrect password.", "error");
+      sessionStorage.setItem("bscs2c-unlocked", "1");
+      unlock();
     };
   $("#quickContributionBtn").onclick = () => {
     if (!dataReady)
@@ -2013,6 +2098,7 @@ document.addEventListener("click", async (e) => {
   if (action === "add-student") return studentModal();
   if (action === "add-contribution") return contributionModal();
   if (action === "add-expense") return expenseModal();
+  if (action === "change-password") return changePasswordModal();
   if (action === "quick-record")
     return ((currentView = "quickRecord"), render());
   if (action === "export-json") return exportJSON();
