@@ -2199,3 +2199,135 @@ button,
     align-items: stretch;
   }
 }
+.data-actions {
+  display: grid;
+  gap: 12px;
+}
+.data-action-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+}
+.data-action-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 19px;
+  font-weight: 800;
+}
+.data-action-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.data-action-body strong {
+  font-size: 13px;
+}
+.data-action-body p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.data-action-tag {
+  display: inline-flex;
+  width: fit-content;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.data-action-tag.warn {
+  color: #ffc76b;
+}
+.data-action-tag.safe {
+  color: #55d6be;
+}
+.data-action-btn {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.data-action-btn.file-btn {
+  display: inline-block;
+}
+.data-action-btn.file-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.data-action-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.kind-export .data-action-icon {
+  background: rgba(139, 124, 255, 0.16);
+  color: #c4bdff;
+}
+.kind-export .data-action-btn {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #6559df);
+  box-shadow: 0 8px 20px rgba(108, 94, 232, 0.25);
+}
+.kind-restore .data-action-icon {
+  background: rgba(255, 199, 107, 0.16);
+  color: #ffd58e;
+}
+.kind-restore .data-action-btn {
+  color: #ffd58e;
+  background: rgba(255, 199, 107, 0.13);
+  border: 1px solid rgba(255, 199, 107, 0.32);
+}
+.kind-merge .data-action-icon {
+  background: rgba(85, 214, 190, 0.16);
+  color: #73e6cf;
+}
+.kind-merge .data-action-btn {
+  color: #73e6cf;
+  background: rgba(85, 214, 190, 0.13);
+  border: 1px solid rgba(85, 214, 190, 0.32);
+}
+.kind-csv .data-action-icon {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7dced;
+}
+.kind-csv .data-action-btn {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  .data-action-card {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+  .data-action-icon {
+    margin-bottom: 2px;
+  }
+  .data-action-btn,
+  .data-action-btn-group {
+    width: 100%;
+  }
+  .data-action-btn {
+    text-align: center;
+  }
+}
