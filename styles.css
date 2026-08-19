@@ -2466,3 +2466,54 @@ button,
     width: 100%;
   }
 }
+
+/* Settings accordion */
+.settings-view {
+  gap: 12px;
+}
+.settings-section.panel {
+  padding: 0;
+  overflow: hidden;
+}
+.settings-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 18px;
+}
+.settings-section > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-section > summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.settings-summary-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+.settings-summary-badge {
+  margin-left: 4px;
+}
+.settings-chevron {
+  margin-left: auto;
+  color: #8b7cff;
+  font-size: 14px;
+  font-weight: 900;
+  transition: transform 0.2s ease;
+}
+.settings-section[open] > summary .settings-chevron {
+  transform: rotate(180deg);
+}
+.settings-section > :not(summary) {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+.settings-section > :last-child {
+  margin-bottom: 18px;
+}
+.settings-section-sub {
+  margin-top: -2px;
+  font-size: 11px;
+}
