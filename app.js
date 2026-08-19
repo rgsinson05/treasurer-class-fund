@@ -31,6 +31,9 @@ let state = {
   settings: {
     contributionAmount: 5,
     className: "BSCS2C",
+    departmentName: "",
+    tagline: "",
+    brandingConfigured: false,
     eventName: "Christmas Party",
     noClassDates: [],
     appDateKey: "",
@@ -400,7 +403,7 @@ function renderDashboard() {
       <div class="panel glass"><div class="panel-header"><h3>Quick actions</h3></div><div class="search-row">${button("+ Add Student", "primary-btn", 'data-action="add-student"')}${button("+ Record Contribution", "ghost-btn", 'data-action="add-contribution"')}${button("+ Add Expense", "ghost-btn", 'data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
     </section>
     <section class="panel glass"><div class="panel-header"><div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="contributions"')}</div>${recentTable(recent)}</section>
-    <div class="dashboard-credit">Developed by <strong>RG Sinson</strong><span>•</span><span>BSCS2C Treasurer</span></div>
+    <div class="dashboard-credit">Developed by <strong>RG Sinson</strong></div>
   </div>`;
 }
 function stat(label, value, sub, icon) {
@@ -558,7 +561,7 @@ function renderReports() {
     spent = state.expenses.reduce((a, x) => a + Number(x.amount), 0),
     balance = collected - spent,
     paid = new Set(state.contributions.map((x) => x.studentId)).size;
-  return `<div class="view"><section class="report-box glass"><p class="eyebrow">TREASURY SUMMARY</p><h3>${esc(state.settings.className)} — ${esc(state.settings.eventName)}</h3><div class="report-grid"><div><span class="muted">Students</span><div class="report-number">${state.students.length}</div></div><div><span class="muted">Contributors</span><div class="report-number">${paid}</div></div><div><span class="muted">Collected</span><div class="report-number">${money(collected)}</div></div><div><span class="muted">Expenses</span><div class="report-number">${money(spent)}</div></div><div><span class="muted">Balance</span><div class="report-number">${money(balance)}</div></div><div><span class="muted">Contribution</span><div class="report-number">${money(state.settings.contributionAmount)}</div></div></div><div class="search-row">${button("Export JSON Backup", "primary-btn", 'data-action="export-json"')}${button("Export Transactions CSV", "ghost-btn", 'data-action="export-csv"')}${button("Print Report", "ghost-btn", 'data-action="print-report"')}</div></section><section class="panel glass"><div class="panel-header"><h3>Expense breakdown</h3></div>${expenseBreakdown()}</section></div>`;
+  return `<div class="view"><section class="report-box glass"><p class="eyebrow">TREASURY SUMMARY</p><h3>${esc(state.settings.className)} — ${esc(state.settings.eventName)}</h3>${state.settings.departmentName ? `<p class="muted" style="margin:2px 0 0">${esc(state.settings.departmentName)}</p>` : ""}<div class="report-grid"><div><span class="muted">Students</span><div class="report-number">${state.students.length}</div></div><div><span class="muted">Contributors</span><div class="report-number">${paid}</div></div><div><span class="muted">Collected</span><div class="report-number">${money(collected)}</div></div><div><span class="muted">Expenses</span><div class="report-number">${money(spent)}</div></div><div><span class="muted">Balance</span><div class="report-number">${money(balance)}</div></div><div><span class="muted">Contribution</span><div class="report-number">${money(state.settings.contributionAmount)}</div></div></div><div class="search-row">${button("Export JSON Backup", "primary-btn", 'data-action="export-json"')}${button("Export Transactions CSV", "ghost-btn", 'data-action="export-csv"')}${button("Print Report", "ghost-btn", 'data-action="print-report"')}</div></section><section class="panel glass"><div class="panel-header"><h3>Expense breakdown</h3></div>${expenseBreakdown()}</section></div>`;
 }
 function expenseBreakdown() {
   const map = {};
@@ -606,7 +609,7 @@ function activityList(q = "", date = "") {
   return `${note}${shown.map((x) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join("")}`;
 }
 function renderSettings() {
-  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Class name</label><input class="input" id="settingClass" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
+  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Section / class name</label><input class="input" id="settingClass" maxlength="40" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="settingDepartment" maxlength="80" value="${esc(state.settings.departmentName || "")}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="settingTagline" maxlength="80" value="${esc(state.settings.tagline || "")}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
 }
 
 function bindViewEvents() {
@@ -1570,7 +1573,7 @@ async function exportJSON() {
     },
   };
   download(
-    `bscs2c-treasury-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    `${brandSlug()}-treasury-backup-${new Date().toISOString().slice(0, 10)}.json`,
     JSON.stringify(backup, null, 2),
     "application/json",
   );
@@ -1592,7 +1595,7 @@ function exportStudentsCSV() {
       }),
   ];
   download(
-    `bscs2c-students-${new Date().toISOString().slice(0, 10)}.csv`,
+    `${brandSlug()}-students-${new Date().toISOString().slice(0, 10)}.csv`,
     lines.map((r) => r.map(csvEscape).join(",")).join("\n"),
     "text/csv;charset=utf-8",
   );
@@ -1629,7 +1632,7 @@ function exportCSV() {
     ]),
   ];
   download(
-    `bscs2c-transactions-${new Date().toISOString().slice(0, 10)}.csv`,
+    `${brandSlug()}-transactions-${new Date().toISOString().slice(0, 10)}.csv`,
     lines.map((r) => r.map(csvEscape).join(",")).join("\n"),
     "text/csv;charset=utf-8",
   );
@@ -1947,6 +1950,87 @@ async function changePasswordModal() {
     showToast("Password updated");
   };
 }
+function currentBranding() {
+  const section =
+    (state.settings.className && String(state.settings.className).trim()) ||
+    "BSCS2C";
+  const department =
+    (state.settings.departmentName &&
+      String(state.settings.departmentName).trim()) ||
+    "";
+  const tagline =
+    (state.settings.tagline && String(state.settings.tagline).trim()) || "";
+  return { section, department, tagline };
+}
+function applyBrandingValues(b) {
+  const eyebrow = $("#loginEyebrow");
+  if (eyebrow) eyebrow.textContent = b.department || "CLASS TREASURY";
+  const title = $("#loginTitle");
+  if (title) title.textContent = b.section;
+  const tag = $("#loginTagline");
+  if (tag)
+    tag.textContent = b.tagline || "Offline-first Treasurer Dashboard";
+  const brandName = $("#brandName");
+  if (brandName) brandName.textContent = b.section;
+  document.title = `${b.section} Treasurer`;
+}
+function applyBranding() {
+  const b = currentBranding();
+  applyBrandingValues(b);
+  try {
+    localStorage.setItem("bscs2c-branding", JSON.stringify(b));
+  } catch {}
+}
+function applyBrandingFromMirror() {
+  let b = { section: "BSCS2C", department: "", tagline: "" };
+  try {
+    const m = JSON.parse(localStorage.getItem("bscs2c-branding") || "{}");
+    b = {
+      section: (m.section && String(m.section).trim()) || "BSCS2C",
+      department: (m.department && String(m.department).trim()) || "",
+      tagline: (m.tagline && String(m.tagline).trim()) || "",
+    };
+  } catch {}
+  applyBrandingValues(b);
+}
+function brandSlug() {
+  const section = currentBranding().section;
+  const slug = section
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "treasury";
+}
+function brandingSetupModal() {
+  const b = currentBranding();
+  modal(
+    "Set up your dashboard",
+    `<p class="footer-note" style="margin:0 0 14px">Personalize this treasury for your section. You can change these anytime in Settings.</p><div class="form-field"><label>Section / class name</label><input class="input" id="setupSection" maxlength="40" value="${esc(b.section)}" placeholder="e.g. BSCS2C"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="setupDepartment" maxlength="80" value="${esc(b.department)}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="setupTagline" maxlength="80" value="${esc(b.tagline)}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="modal-actions"><button type="button" class="ghost-btn" id="setupSkip">Skip for now</button><button type="button" class="primary-btn" id="setupSave">Save</button></div>`,
+  );
+  $("#setupSkip").onclick = async () => {
+    await saveSetting("brandingConfigured", true);
+    closeModal();
+    showToast("You can set your section name in Settings anytime.");
+  };
+  $("#setupSave").onclick = async () => {
+    const section = $("#setupSection").value.trim() || "BSCS2C";
+    const department = $("#setupDepartment").value.trim();
+    const tagline = $("#setupTagline").value.trim();
+    await saveSetting("className", section);
+    await saveSetting("departmentName", department);
+    await saveSetting("tagline", tagline);
+    await saveSetting("brandingConfigured", true);
+    await log(
+      "Set dashboard branding",
+      `Section "${section}"${department ? ` · ${department}` : ""} configured.`,
+    );
+    await refresh();
+    applyBranding();
+    closeModal();
+    render();
+    showToast("Dashboard personalized");
+  };
+}
 async function initializeData() {
   if (dataInitPromise) return dataInitPromise;
   dataInitPromise = (async () => {
@@ -1955,6 +2039,7 @@ async function initializeData() {
       dbReadyPromise = Promise.resolve(db);
       await refresh();
       dataReady = true;
+      applyBranding();
       if (!$("#appShell")?.classList.contains("hidden")) render();
       return db;
     } catch (err) {
@@ -1971,6 +2056,7 @@ async function initializeData() {
 async function init() {
   const loginForm = $("#loginForm");
   const passwordInput = $("#passwordInput");
+  applyBrandingFromMirror();
   if (loginForm)
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
@@ -2024,6 +2110,8 @@ function unlock() {
   $("#loginScreen").classList.add("hidden");
   $("#appShell").classList.remove("hidden");
   render();
+  applyBranding();
+  if (!state.settings.brandingConfigured) brandingSetupModal();
 }
 function updateOnline() {
   const p = $("#onlinePill");
@@ -2169,6 +2257,11 @@ document.addEventListener("click", async (e) => {
       );
     await saveSetting("className", $("#settingClass").value.trim() || "BSCS2C");
     await saveSetting(
+      "departmentName",
+      ($("#settingDepartment")?.value || "").trim(),
+    );
+    await saveSetting("tagline", ($("#settingTagline")?.value || "").trim());
+    await saveSetting(
       "eventName",
       $("#settingEvent").value.trim() || "Christmas Party",
     );
@@ -2178,6 +2271,7 @@ document.addEventListener("click", async (e) => {
       "Class, event, or daily contribution amount changed.",
     );
     await refresh();
+    applyBranding();
     render();
     return showToast("Settings saved");
   }
