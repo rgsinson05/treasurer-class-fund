@@ -1,4 +1,4 @@
-const CACHE = 'bscs2c-treasurer-v25-sessions-contrib-login';
+const CACHE = 'bscs2c-treasurer-v26-students-picker';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -2628,3 +2628,42 @@ button,
   border-top: 1px solid var(--border);
   border-radius: 0;
 }
+
+/* Add Contribution: searchable student picker */
+.student-pick-list {
+  display: grid;
+  gap: 6px;
+  max-height: 34vh;
+  overflow: auto;
+  margin-top: 8px;
+  padding-right: 2px;
+}
+.student-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: rgba(4, 8, 18, 0.35);
+  color: #dfe4f1;
+  font-size: 13px;
+  font-weight: 700;
+}
+.student-pick:hover {
+  border-color: rgba(139, 124, 255, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+.student-pick.selected {
+  border-color: rgba(85, 214, 190, 0.55);
+  background: rgba(85, 214, 190, 0.1);
+  color: #fff;
+}
+.student-pick-check {
+  color: var(--accent2);
+  font-weight: 900;
+  flex: 0 0 auto;
+}

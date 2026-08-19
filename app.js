@@ -430,8 +430,11 @@ function recentTable(rows) {
     .join("")}</tbody></table></div>`;
 }
 
+function statusLabel(status) {
+  return status === "Active" ? "Participating" : "Not participating";
+}
 function renderStudents() {
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentStatusFilter" style="width:160px"><option value="all">All statuses</option><option>Active</option><option>Inactive</option></select></div><div id="studentsTable"></div></section></div>`;
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentStatusFilter" style="width:160px"><option value="all">All statuses</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
 }
 function studentsTable(filter = "", status = "all") {
   const rows = state.students
@@ -461,7 +464,7 @@ function studentsTable(filter = "", status = "all") {
             : todayDue
               ? "Due"
               : "No class";
-      return `<tr><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${s.status}</span></td><td>${todayLabel === "Paid" ? '<span class="badge paid">Paid</span>' : todayLabel === "Advance" ? '<span class="badge paid">Advance</span>' : todayLabel === "Due" ? '<span class="badge expense">Due</span>' : '<span class="muted">No class</span>'}</td><td>${ledger.outstanding ? `<span class="badge expense">${money(ledger.outstanding)} due</span>` : ledger.advance.length ? `<span class="badge paid">${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead</span>` : '<span class="badge active">₱0 due</span>'}</td><td>${payments[0] ? dateTime(payments[0].at) : "—"}</td><td><div class="actions">${button("History", "small-btn", 'data-payment-history="' + s.id + '"')}${button("Edit", "small-btn", 'data-edit-student="' + s.id + '"')}${s.status === "Active" ? button("Record", "small-btn", 'data-record-student="' + s.id + '"') : ""}${button("Delete", "small-btn danger", 'data-delete-student="' + s.id + '"')}</div></td></tr>`;
+      return `<tr><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></td><td>${todayLabel === "Paid" ? '<span class="badge paid">Paid</span>' : todayLabel === "Advance" ? '<span class="badge paid">Advance</span>' : todayLabel === "Due" ? '<span class="badge expense">Due</span>' : '<span class="muted">No class</span>'}</td><td>${ledger.outstanding ? `<span class="badge expense">${money(ledger.outstanding)} due</span>` : ledger.advance.length ? `<span class="badge paid">${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead</span>` : '<span class="badge active">₱0 due</span>'}</td><td>${payments[0] ? dateTime(payments[0].at) : "—"}</td><td><div class="actions">${button("History", "small-btn", 'data-payment-history="' + s.id + '"')}${button("Edit", "small-btn", 'data-edit-student="' + s.id + '"')}${button("Delete", "small-btn danger", 'data-delete-student="' + s.id + '"')}</div></td></tr>`;
     })
     .join("")}</tbody></table></div>`;
 }
@@ -480,7 +483,7 @@ function quickStudentList(q = "") {
     )
     .sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)));
   if (!rows.length)
-    return `<div class="empty">${q ? "No students match your search." : "No active students found."}</div>`;
+    return `<div class="empty">${q ? "No students match your search." : "No participating students found."}</div>`;
   return rows
     .map((s) => {
       const payments = state.contributions
@@ -966,7 +969,7 @@ async function studentModal(student) {
   const s = student || { id: "", name: "", alias: "", status: "Active" };
   modal(
     student ? "Edit Student" : "Add Student",
-    `<form id="studentForm"><div class="form-field"><label>Name</label><input class="input" id="studentName" required maxlength="100" value="${esc(s.name)}" placeholder="e.g. Juan Dela Cruz"></div><div class="form-field" style="margin-top:13px"><label>Another name / identifier <span class="muted">(optional)</span></label><input class="input" id="studentAlias" maxlength="60" value="${esc(s.alias || "")}" placeholder="e.g. Juan 2, J. Dela Cruz, or nickname"><div class="footer-note">Use this when two classmates have the same name. It makes contribution records easier to identify.</div></div><div class="form-field" style="margin-top:13px"><label>Status</label><select class="select" id="studentStatus"><option ${s.status === "Active" ? "selected" : ""}>Active</option><option ${s.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save student</button></div></form>`,
+    `<form id="studentForm"><div class="form-field"><label>Name</label><input class="input" id="studentName" required maxlength="100" value="${esc(s.name)}" placeholder="e.g. Juan Dela Cruz"></div><div class="form-field" style="margin-top:13px"><label>Another name / identifier <span class="muted">(optional)</span></label><input class="input" id="studentAlias" maxlength="60" value="${esc(s.alias || "")}" placeholder="e.g. Juan 2, J. Dela Cruz, or nickname"><div class="footer-note">Use this when two classmates have the same name. It makes contribution records easier to identify.</div></div><div class="form-field" style="margin-top:13px"><label>Status</label><select class="select" id="studentStatus"><option value="Active" ${s.status === "Active" ? "selected" : ""}>Participating</option><option value="Inactive" ${s.status === "Inactive" ? "selected" : ""}>Not participating</option></select></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save student</button></div></form>`,
   );
   $("#studentForm").onsubmit = async (e) => {
     e.preventDefault();
@@ -994,15 +997,18 @@ async function studentModal(student) {
 }
 
 async function contributionModal(existing, studentId) {
-  const options = state.students
+  const activeStudents = state.students
     .filter((s) => s.status === "Active")
-    .sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)))
-    .map(
-      (s) =>
-        `<option value="${s.id}" ${s.id === (existing?.studentId || studentId) ? "selected" : ""}>${esc(displayStudent(s))}</option>`,
-    )
-    .join("");
-  if (!options) return showToast("No active students available.", "error");
+    .sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)));
+  if (
+    existing?.studentId &&
+    !activeStudents.some((s) => s.id === existing.studentId)
+  ) {
+    const cur = state.students.find((s) => s.id === existing.studentId);
+    if (cur) activeStudents.unshift(cur);
+  }
+  if (!activeStudents.length)
+    return showToast("No participating students available.", "error");
   const daily = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
   const c = existing || {
     id: "",
@@ -1010,13 +1016,46 @@ async function contributionModal(existing, studentId) {
     at: effectivePaymentISO(),
     studentId: studentId || "",
   };
+  let selectedId = existing?.studentId || studentId || "";
+  const preselect = selectedId
+    ? activeStudents.find((s) => s.id === selectedId)
+    : null;
+  const rowsHtml = (q = "") => {
+    const ql = q.trim().toLowerCase();
+    const list = activeStudents.filter((s) =>
+      displayStudent(s).toLowerCase().includes(ql),
+    );
+    if (!list.length)
+      return '<div class="empty">No students match your search.</div>';
+    return list
+      .map(
+        (s) =>
+          `<button type="button" class="student-pick${s.id === selectedId ? " selected" : ""}" data-pick-student="${s.id}"><span>${esc(displayStudent(s))}</span>${s.id === selectedId ? '<span class="student-pick-check">✓</span>' : ""}</button>`,
+      )
+      .join("");
+  };
+  const initialQuery = preselect ? displayStudent(preselect) : "";
   modal(
     existing ? "Edit Contribution" : "Record Contribution",
-    `<form id="contributionForm"><div class="form-grid"><div class="form-field full-width"><label>Student</label><select class="select" id="contributionStudent" required>${options}</select></div><div class="form-field"><label>Amount received</label><input class="input" id="contributionAmount" type="number" min="${daily}" step="${daily}" value="${Number(c.amount)}" required></div><div class="form-field"><label>Date & time</label><input class="input" id="contributionAt" type="datetime-local" value="${toLocalInput(c.at)}" required><div class="footer-note">New payments use the current App Date. The real recording time is kept separately for the audit trail.</div></div></div><div class="footer-note">After entering the amount, you'll choose exactly how much goes to past balance, today, and advance payment.</div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Continue to allocation</button></div></form>`,
+    `<form id="contributionForm"><input type="hidden" id="contributionStudent" value="${esc(selectedId)}"><div class="form-field"><label>Student</label><input class="input" id="contributionStudentSearch" value="${esc(initialQuery)}" placeholder="Search student name or identifier..." autocomplete="off"><div class="student-pick-list" id="contributionStudentList">${rowsHtml(initialQuery)}</div></div><div class="form-grid" style="margin-top:13px"><div class="form-field"><label>Amount received</label><input class="input" id="contributionAmount" type="number" min="${daily}" step="${daily}" value="${Number(c.amount)}" required></div><div class="form-field"><label>Date & time</label><input class="input" id="contributionAt" type="datetime-local" value="${toLocalInput(c.at)}" required><div class="footer-note">New payments use the current recording date. The real recording time is kept separately for the audit trail.</div></div></div><div class="footer-note">Pick a student, enter the amount, then choose how much goes to past balance, today, and advance payment.</div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Continue to allocation</button></div></form>`,
   );
+  const listEl = $("#contributionStudentList");
+  const searchEl = $("#contributionStudentSearch");
+  const hidden = $("#contributionStudent");
+  searchEl?.addEventListener("input", (e) => {
+    listEl.innerHTML = rowsHtml(e.target.value);
+  });
+  listEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-pick-student]");
+    if (!btn) return;
+    selectedId = btn.dataset.pickStudent;
+    hidden.value = selectedId;
+    listEl.innerHTML = rowsHtml(searchEl.value);
+  });
   $("#contributionForm").onsubmit = (e) => {
     e.preventDefault();
     const sid = $("#contributionStudent").value;
+    if (!sid) return showToast("Choose a student first.", "error");
     const value = Number($("#contributionAmount").value);
     const entered = $("#contributionAt").value;
     const at = existing
@@ -1251,7 +1290,7 @@ function paymentHistoryModal(studentId) {
   const body = `
     <div class="history-profile-head">
       <div class="history-avatar">${esc((s.name || "?").trim().charAt(0).toUpperCase())}</div>
-      <div><strong>${esc(displayStudent(s))}</strong><span>${s.status === "Active" ? "Active student" : "Inactive student"}</span></div>
+      <div><strong>${esc(displayStudent(s))}</strong><span>${s.status === "Active" ? "Participating student" : "Not participating"}</span></div>
     </div>
     <div class="history-status-card"><div><span class="muted">Current balance</span><strong class="status-value ${statusClass}">${balanceText}</strong></div><div class="today-status"><span class="muted">Today</span><strong>${todayStatus}</strong></div></div>
     <div class="history-metrics"><div><span>Total received</span><strong>${money(total)}</strong></div><div><span>Payments</span><strong>${payments.length}</strong></div><div><span>Daily contribution</span><strong>${money(ledger.daily)}</strong></div></div>
@@ -1642,7 +1681,7 @@ function exportStudentsCSV() {
         const p = state.contributions
           .filter((x) => x.studentId === s.id)
           .sort((a, b) => new Date(b.at) - new Date(a.at))[0];
-        return [s.name, s.status, p ? "Yes" : "No", p ? p.at : ""];
+        return [s.name, statusLabel(s.status), p ? "Yes" : "No", p ? p.at : ""];
       }),
   ];
   download(
