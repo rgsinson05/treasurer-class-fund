@@ -21,8 +21,6 @@ let quickSessionTotal = 0;
 let quickSessionCount = 0;
 let quickOverrideOn = false;
 let quickOverrideValue = "";
-let contributionPage = 1;
-const CONTRIBUTION_PAGE_SIZE = 15;
 const ACTIVITY_RECENT_LIMIT = 20;
 let state = {
   students: [],
@@ -367,7 +365,7 @@ function collectionSessionDetail(sessionId) {
   modal(
     `Session · ${dateOnly(dateFromKey(session.date))}`,
     `<div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${payments.length}</strong></div><div><span class="muted">Status</span><strong>${session.status === "open" ? "Open" : "Closed"}</strong></div>${session.status === "closed" ? `<div><span class="muted">Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span class="muted">Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div><div class="history-section-title"><div><strong>Payments in this session</strong><span>Actual money collected during the session</span></div></div><div class="session-payment-list">${rows}</div>${session.note ? `<div class="footer-note" style="margin-top:12px">Note: ${esc(session.note)}</div>` : ""}`,
-    `<div class="modal-actions">${session.status === "open" ? button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`) : ""}${button("Delete session", "danger-btn", `data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"`)}<button class="ghost-btn" data-close-modal>Close</button></div>`,
+    `<div class="modal-actions">${session.status === "open" ? button("Add all from this day", "ghost-btn", `data-action="attach-all-session" data-attach-session="${session.id}"`) + button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`) : ""}${button("Delete session", "danger-btn", `data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"`)}<button class="ghost-btn" data-close-modal>Close</button></div>`,
   );
 }
 
@@ -378,7 +376,7 @@ function renderCollectionSessions() {
     b.date.localeCompare(a.date),
   );
   const current = session
-    ? `<section class="panel glass session-hero"><div class="panel-header"><div><h3>Today's session</h3><span class="muted">${dateOnly(dateFromKey(today))}</span></div><span class="badge ${session.status === "open" ? "paid" : "active"}">${session.status === "open" ? "Open" : "Closed"}</span></div><div class="session-summary"><div><span>Collected</span><strong>${money(sessionTotal(session))}</strong></div><div><span>Payments</span><strong>${(session.paymentIds || []).length}</strong></div><div><span>Started</span><strong>${dateTime(session.startedAt)}</strong></div>${session.status === "closed" ? `<div><span>Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span>Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div>${session.status === "open" ? `<div class="session-actions">${button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`)}${button("Close session", "primary-btn", 'data-action="close-session"')}</div>` : `<div class="footer-note">This session is closed. Payments can no longer be attached to it.</div>`}</section>`
+    ? `<section class="panel glass session-hero"><div class="panel-header"><div><h3>Today's session</h3><span class="muted">${dateOnly(dateFromKey(today))}</span></div><span class="badge ${session.status === "open" ? "paid" : "active"}">${session.status === "open" ? "Open" : "Closed"}</span></div><div class="session-summary"><div><span>Collected</span><strong>${money(sessionTotal(session))}</strong></div><div><span>Payments</span><strong>${(session.paymentIds || []).length}</strong></div><div><span>Started</span><strong>${dateTime(session.startedAt)}</strong></div>${session.status === "closed" ? `<div><span>Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span>Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div>${session.status === "open" ? `<div class="session-actions">${button("Add all from this day", "ghost-btn", `data-action="attach-all-session" data-attach-session="${session.id}"`)}${button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`)}${button("Close session", "primary-btn", 'data-action="close-session"')}</div>` : `<div class="footer-note">This session is closed. Payments can no longer be attached to it.</div>`}</section>`
     : `<section class="panel glass session-hero"><div class="panel-header"><div><h3>No session started today</h3><span class="muted">Sessions track only money collected during the session.</span></div></div><div class="session-actions">${button("Start today’s collection session", "primary-btn", 'data-action="start-session"')}</div></section>`;
   const history = sessions
     .map(
@@ -386,7 +384,7 @@ function renderCollectionSessions() {
         `<article class="session-row" data-session-id="${x.id}"><div><strong>${dateOnly(dateFromKey(x.date))}</strong><span>${(x.paymentIds || []).length} payment${(x.paymentIds || []).length === 1 ? "" : "s"} · ${x.status === "open" ? "Open" : "Closed"}</span></div><div class="session-row-right"><div><strong>${money(sessionTotal(x))}</strong>${x.status === "closed" ? `<span class="${Math.abs(Number(x.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${Math.abs(Number(x.difference || 0)) < 0.001 ? "✓ Balanced" : `Difference ${money(x.difference)}`}</span>` : "<span>In progress</span>"}</div>${button("Delete", "small-btn danger", `data-action="delete-session" data-session-delete="${x.id}" data-session-date="${x.date}"`)}</div></article>`,
     )
     .join("");
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Collection Sessions</h3><span class="muted">One session per app date · cash collected during that session only</span></div>${button("+ Start session for a past date", "ghost-btn", 'data-action="start-backdated-session"')}</div></section>${current}<section class="panel glass"><div class="panel-header"><div><h3>Session history</h3><span class="muted">${sessions.length} session${sessions.length === 1 ? "" : "s"}</span></div></div><div class="session-list">${history || '<div class="empty">No collection sessions yet.</div>'}</div></section></div>`;
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Collection Sessions</h3><span class="muted">Count and reconcile the cash you collect</span></div></div><p class="footer-note" style="margin:8px 0 0">A collection session groups the payments you take in one sitting so you can count the physical cash afterward and check it matches what was recorded. Start a session before collecting, add the payments you take (or tap "Add all from this day" to pull in everything recorded that day), then close it and enter the cash counted to catch any shortage.</p></section>${current}<section class="panel glass"><div class="panel-header"><div><h3>Session history</h3><span class="muted">${sessions.length} session${sessions.length === 1 ? "" : "s"}</span></div></div><div class="session-list">${history || '<div class="empty">No collection sessions yet.</div>'}</div></section></div>`;
 }
 
 function renderDashboard() {
@@ -416,7 +414,7 @@ function renderDashboard() {
       <div class="panel glass"><div class="panel-header"><h3>Quick actions</h3></div><div class="search-row">${button("+ Add Student", "primary-btn", 'data-action="add-student"')}${button("+ Record Contribution", "ghost-btn", 'data-action="add-contribution"')}${button("+ Add Expense", "ghost-btn", 'data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
     </section>
     <section class="panel glass"><div class="panel-header"><div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="contributions"')}</div>${recentTable(recent)}</section>
-    <div class="dashboard-credit">Developed by <strong>RG Sinson</strong></div>
+    <div class="app-footer"><div class="dashboard-credit">Developed by <strong>RG Sinson</strong></div><div class="dashboard-rights">© 2026 RG Sinson · All rights reserved.</div></div>
   </div>`;
 }
 function stat(label, value, sub, icon) {
@@ -509,9 +507,8 @@ function quickStudentList(q = "") {
     .join("");
 }
 function renderContributions() {
-  contributionPage = 1;
   const total = state.contributions.reduce((a, x) => a + Number(x.amount), 0);
-  return `<div class="view"><section class="cards">${stat("Collected", money(total), "All recorded contributions", "₱")}${stat("Transactions", state.contributions.length, "Payment records", "≡")}${stat("Fixed amount", money(state.settings.contributionAmount), "Christmas Party", "◎")}${stat("Contributors", new Set(state.contributions.map((x) => x.studentId)).size, "Unique students", "✓")}</section><section class="panel glass"><div class="panel-header"><div><h3>Contribution records</h3><span class="muted">${esc(state.settings.eventName)}</span></div>${button("+ Record Contribution", "primary-btn", 'data-action="add-contribution"')}</div><div class="search-row"><input class="input search-input" id="contributionSearch" placeholder="Search student..."><input class="input" type="date" id="contributionDateFilter" style="width:180px"></div><div id="contributionTable"></div></section></div>`;
+  return `<div class="view"><section class="cards">${stat("Collected", money(total), "All recorded contributions", "₱")}${stat("Transactions", state.contributions.length, "Payment records", "≡")}${stat("Fixed amount", money(state.settings.contributionAmount), "Christmas Party", "◎")}${stat("Contributors", new Set(state.contributions.map((x) => x.studentId)).size, "Unique students", "✓")}</section><section class="panel glass"><div class="panel-header"><div><h3>Contribution records</h3><span class="muted">${esc(state.settings.eventName)}</span></div><div class="header-actions">${button("+ Record Contribution", "primary-btn", 'data-action="add-contribution"')}${state.contributions.length ? button("Delete all", "danger-btn", 'data-action="delete-all-contributions"') : ""}</div></div><div class="search-row"><input class="input search-input" id="contributionSearch" placeholder="Search student..."><input class="input" type="date" id="contributionDateFilter" style="width:180px"></div><div id="contributionTable"></div></section></div>`;
 }
 function contributionTable(q = "", date = "") {
   let rows = [...state.contributions]
@@ -523,23 +520,31 @@ function contributionTable(q = "", date = "") {
         (!date || x.at.slice(0, 10) === date)
       );
     });
-  if (!rows.length) {
-    contributionPage = 1;
+  if (!rows.length)
     return `<div class="empty">No contribution records found.</div>`;
+  const groups = new Map();
+  for (const x of rows) {
+    const key = localDateKey(x.at);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(x);
   }
-  const pageCount = Math.max(1, Math.ceil(rows.length / CONTRIBUTION_PAGE_SIZE));
-  if (contributionPage > pageCount) contributionPage = pageCount;
-  if (contributionPage < 1) contributionPage = 1;
-  const startIdx = (contributionPage - 1) * CONTRIBUTION_PAGE_SIZE;
-  const pageRows = rows.slice(startIdx, startIdx + CONTRIBUTION_PAGE_SIZE);
-  const table = `<div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Amount</th><th>Date/time</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${pageRows.map((x) => `<tr><td>${esc(displayStudent(state.students.find((s) => s.id === x.studentId)))}</td><td><strong>${money(x.amount)}</strong></td><td>${dateTime(x.at)}</td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-contribution="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-contribution="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div>`;
-  const from = startIdx + 1;
-  const to = startIdx + pageRows.length;
-  const pager =
-    pageCount > 1
-      ? `<div class="pager">${button("‹ Prev", "small-btn", `data-contrib-page="prev"${contributionPage <= 1 ? " disabled" : ""}`)}<span class="pager-info">Page ${contributionPage} of ${pageCount} · ${from}–${to} of ${rows.length}</span>${button("Next ›", "small-btn", `data-contrib-page="next"${contributionPage >= pageCount ? " disabled" : ""}`)}</div>`
-      : `<div class="pager"><span class="pager-info">${rows.length} record${rows.length === 1 ? "" : "s"}</span></div>`;
-  return `${table}${pager}`;
+  const dayKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  const grandTotal = rows.reduce((a, x) => a + Number(x.amount || 0), 0);
+  const summary = `<div class="contrib-summary"><span>${rows.length} payment${rows.length === 1 ? "" : "s"} · ${dayKeys.length} day${dayKeys.length === 1 ? "" : "s"}</span><strong>${money(grandTotal)}</strong></div>`;
+  const groupsHtml = dayKeys
+    .map((key, i) => {
+      const items = groups.get(key);
+      const dayTotal = items.reduce((a, x) => a + Number(x.amount || 0), 0);
+      const body = `<div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Amount</th><th>Time</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${items
+        .map(
+          (x) =>
+            `<tr><td>${esc(displayStudent(state.students.find((s) => s.id === x.studentId)))}</td><td><strong>${money(x.amount)}</strong></td><td>${new Date(x.at).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}</td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-contribution="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-contribution="' + x.id + '"')}</div></td></tr>`,
+        )
+        .join("")}</tbody></table></div>`;
+      return `<details class="day-group"${i === 0 ? " open" : ""}><summary class="day-summary"><div class="day-summary-info"><strong>${dateOnly(dateFromKey(key))}</strong><span>${items.length} payment${items.length === 1 ? "" : "s"}</span></div><span class="day-summary-total">${money(dayTotal)}</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary>${body}</details>`;
+    })
+    .join("");
+  return `${summary}<div class="day-group-list">${groupsHtml}</div>`;
 }
 function refreshContributionTable() {
   const el = $("#contributionTable");
@@ -664,11 +669,9 @@ function bindViewEvents() {
   });
   if ($("#studentsTable")) $("#studentsTable").innerHTML = studentsTable();
   $("#contributionSearch")?.addEventListener("input", () => {
-    contributionPage = 1;
     refreshContributionTable();
   });
   $("#contributionDateFilter")?.addEventListener("change", () => {
-    contributionPage = 1;
     refreshContributionTable();
   });
   if ($("#contributionTable")) refreshContributionTable();
@@ -1293,19 +1296,32 @@ async function startCollectionSessionForDate(dateKey) {
 async function startCollectionSession() {
   return startCollectionSessionForDate(effectiveTodayKey());
 }
-function startSessionForDateModal() {
-  const today = effectiveTodayKey();
-  modal(
-    "Start session for another date",
-    `<form id="backdateSessionForm"><div class="form-field"><label>Date</label><input class="input" id="backdateSessionDate" type="date" max="${today}" required></div><div class="footer-note">Use this for a day you collected payments but never opened a session — for example a day your assistant collected for you. After starting it, use "Add existing payment" to attach the payment records already recorded on that date.</div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Start session</button></div></form>`,
+async function attachAllPaymentsToSession(sessionId) {
+  const session = sessionId
+    ? state.collectionSessions.find((x) => x.id === sessionId)
+    : getCollectionSession();
+  if (!session || session.status !== "open")
+    return showToast("This collection session is not open.", "error");
+  const assigned = new Set(session.paymentIds || []);
+  const matches = state.contributions.filter(
+    (p) => !assigned.has(p.id) && localDateKey(p.at) === session.date,
   );
-  $("#backdateSessionForm").onsubmit = async (e) => {
-    e.preventDefault();
-    const val = $("#backdateSessionDate").value;
-    if (!val) return;
-    closeModal();
-    await startCollectionSessionForDate(val);
-  };
+  if (!matches.length)
+    return showToast(
+      `No unattached payments found for ${dateOnly(dateFromKey(session.date))}.`,
+      "error",
+    );
+  for (const p of matches) session.paymentIds.push(p.id);
+  await persistCollectionSessions();
+  await log(
+    "Added all payments to collection session",
+    `${matches.length} payment${matches.length === 1 ? "" : "s"} from ${dateOnly(dateFromKey(session.date))} attached.`,
+  );
+  closeModal();
+  render();
+  showToast(
+    `Added ${matches.length} payment${matches.length === 1 ? "" : "s"} to the session`,
+  );
 }
 async function attachPaymentToSession(sessionId) {
   const session = sessionId
@@ -1998,11 +2014,11 @@ function currentBranding() {
   return { section, department, tagline };
 }
 function applyBrandingValues(b) {
-  const eyebrow = $("#loginEyebrow");
+  const eyebrow = $("#loginEyebrowText") || $("#loginEyebrow");
   if (eyebrow) eyebrow.textContent = b.department || "CLASS TREASURY";
   const title = $("#loginTitle");
   if (title) title.textContent = b.section;
-  const tag = $("#loginTagline");
+  const tag = $("#loginTaglineText") || $("#loginTagline");
   if (tag)
     tag.textContent = b.tagline || "Offline-first Treasurer Dashboard";
   const brandName = $("#brandName");
@@ -2290,16 +2306,27 @@ document.addEventListener("click", async (e) => {
     lock();
     return;
   }
-  const cpage = e.target.closest("[data-contrib-page]");
-  if (cpage) {
-    if (cpage.disabled) return;
-    contributionPage += cpage.dataset.contribPage === "next" ? 1 : -1;
-    refreshContributionTable();
-    return;
-  }
   const action = e.target.closest("[data-action]")?.dataset.action;
   if (action === "add-student") return studentModal();
   if (action === "add-contribution") return contributionModal();
+  if (action === "delete-all-contributions") {
+    const count = state.contributions.length;
+    if (!count)
+      return showToast("There are no contribution records to delete.", "error");
+    return confirmAction(
+      "Delete ALL contribution records?",
+      `Are you sure? This permanently deletes all ${count} contribution record${count === 1 ? "" : "s"}. It cannot be undone and they will NOT go to the recycle bin. Students, expenses, and settings are kept — export a JSON backup first if you might need them.`,
+      async () => {
+        for (const x of [...state.contributions])
+          await del("contributions", x.id);
+        await log(
+          "Deleted all contributions",
+          `${count} contribution record${count === 1 ? "" : "s"} permanently deleted.`,
+        );
+        await refresh();
+      },
+    );
+  }
   if (action === "add-expense") return expenseModal();
   if (action === "change-password") return changePasswordModal();
   if (action === "quick-record")
@@ -2314,8 +2341,11 @@ document.addEventListener("click", async (e) => {
     render();
     return showToast("Counter reset");
   }
-  if (action === "start-backdated-session") return startSessionForDateModal();
   if (action === "close-session") return closeCollectionSession();
+  if (action === "attach-all-session") {
+    const abtn = e.target.closest("[data-attach-session]");
+    return attachAllPaymentsToSession(abtn?.dataset.attachSession);
+  }
   if (action === "attach-session-payment") {
     const abtn = e.target.closest("[data-attach-session]");
     return attachPaymentToSession(abtn?.dataset.attachSession);

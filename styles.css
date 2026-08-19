@@ -7,6 +7,7 @@
   --muted: #9ba6bf;
   --accent: #8b7cff;
   --accent2: #55d6be;
+  --green: #4ade80;
   --danger: #ff6f91;
   --warning: #ffc76b;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
@@ -2516,4 +2517,114 @@ button,
 .settings-section-sub {
   margin-top: -2px;
   font-size: 11px;
+}
+
+/* Login card polish: icons + green credit */
+.login-eyebrow,
+.login-tagline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.login-ic {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.login-eyebrow .login-ic {
+  color: var(--green);
+}
+.login-tagline .login-ic {
+  color: #8b93ad;
+  opacity: 0.85;
+}
+.login-note strong {
+  color: var(--green);
+}
+
+/* After-login footer credit + rights */
+.app-footer {
+  text-align: center;
+  padding-top: 4px;
+}
+.dashboard-credit strong {
+  color: var(--green);
+}
+.dashboard-rights {
+  text-align: center;
+  color: #5c6780;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+}
+
+/* Contributions: day groups */
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.contrib-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 2px 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.contrib-summary strong {
+  color: var(--text);
+  font-size: 14px;
+}
+.day-group-list {
+  display: grid;
+  gap: 8px;
+}
+.day-group {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.022);
+  overflow: hidden;
+}
+.day-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  padding: 13px 14px;
+}
+.day-summary::-webkit-details-marker {
+  display: none;
+}
+.day-summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.day-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.day-summary-info strong {
+  font-size: 13px;
+}
+.day-summary-info span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.day-summary-total {
+  margin-left: auto;
+  font-weight: 900;
+  color: #73e6cf;
+  font-size: 14px;
+}
+.day-group[open] > .day-summary .settings-chevron {
+  transform: rotate(180deg);
+}
+.day-group .table-wrap {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
 }
