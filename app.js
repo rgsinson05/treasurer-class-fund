@@ -407,7 +407,7 @@ function renderDashboard() {
     .sort((a, b) => new Date(b.at || b.date) - new Date(a.at || a.date))
     .slice(0, 7);
   return `<div class="view">
-    <section class="panel glass app-date-panel"><div class="panel-header"><div><h3>App Date</h3><span class="muted">Controls which class day the treasury calculations consider today.</span></div><span class="badge ${state.settings.appDateKey ? "expense" : "active"}">${state.settings.appDateKey ? "Adjusted" : "Today"}</span></div><div class="app-date-controls"><div><strong>${dateOnly(effectiveTodayDate())}</strong><span class="muted">${state.settings.appDateKey ? `Adjusted from device date ${dateOnly(new Date())}` : "Using your device date"}</span></div><input class="input app-date-input" id="appDatePicker" type="date" value="${effectiveTodayKey()}" aria-label="App date"><div class="app-date-actions">${button("Apply date", "primary-btn", 'data-action="apply-app-date"')}${state.settings.appDateKey ? button("Reset to today", "ghost-btn", 'data-action="reset-app-date"') : ""}</div></div></section>
+    ${state.settings.appDateKey ? `<section class="panel glass backdate-banner"><div class="backdate-banner-main"><span class="backdate-dot"></span><div><strong>Recording for ${dateOnly(effectiveTodayDate())}</strong><span class="muted">You're back-dated — device date is ${dateOnly(new Date())}. New payments and today's totals use this date.</span></div></div>${button("Back to today", "primary-btn", 'data-action="reset-app-date"')}</section>` : ""}
     <section class="cards">
       ${stat("Total Collected", money(total), "↑ Contributions", "₱")}${stat("Total Expenses", money(expenses), "↓ Spending", "↗")}${stat("Current Balance", money(balance), "Available treasury", "◎")}${stat("Paid Students", `${paid} / ${active}`, "Recorded contributors", "✓")}
     </section>
@@ -624,7 +624,7 @@ function activityList(q = "", date = "") {
   return `${note}${shown.map((x) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${esc(x.action)}</strong><p>${esc(x.details)} · ${dateTime(x.at)} · ${esc(x.by)}</p></div></div>`).join("")}`;
 }
 function renderSettings() {
-  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Section / class name</label><input class="input" id="settingClass" maxlength="40" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="settingDepartment" maxlength="80" value="${esc(state.settings.departmentName || "")}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="settingTagline" maxlength="80" value="${esc(state.settings.tagline || "")}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
+  return `<div class="view"><div class="settings-grid"><section class="panel glass"><div class="panel-header"><h3>Class settings</h3></div><div class="form-field"><label>Section / class name</label><input class="input" id="settingClass" maxlength="40" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="settingDepartment" maxlength="80" value="${esc(state.settings.departmentName || "")}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="settingTagline" maxlength="80" value="${esc(state.settings.tagline || "")}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></section><section class="panel glass"><div class="panel-header"><h3>Data management</h3></div><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></section></div><section class="panel glass"><div class="panel-header"><div><h3>Recording date</h3><span class="muted">The date new payments and "today" totals are recorded against. Leave on Today for normal use.</span></div><span class="badge ${state.settings.appDateKey ? "expense" : "active"}">${state.settings.appDateKey ? "Back-dated" : "Today"}</span></div><div class="app-date-controls"><div><strong>${dateOnly(effectiveTodayDate())}</strong><span class="muted">${state.settings.appDateKey ? `Back-dated from today (${dateOnly(new Date())})` : "Using your device date"}</span></div><input class="input app-date-input" id="recordingDatePicker" type="date" value="${effectiveTodayKey()}" aria-label="Recording date">${state.settings.appDateKey ? button("Back to today", "ghost-btn", 'data-action="reset-app-date"') : ""}</div><div class="footer-note">Pick a date and it applies right away. Forgot to collect last Friday? Set the date to that Friday, record everyone, then tap "Back to today" — you can repeat this for several past days.</div></section><section class="panel glass"><div class="panel-header"><h3>Contribution rules</h3></div><div class="setting-row"><div><strong>Class days</strong><p>Monday–Friday, except dates you mark as no-class/holiday.</p></div><span class="badge active">Automatic</span></div><div class="setting-row"><div><strong>Payment allocation</strong><p>Actual money received stays as one payment. The system allocates it to oldest unpaid days, then future days.</p></div><span class="badge paid">Automatic</span></div><div class="setting-row"><div><strong>Partial class-day payments</strong><p>Not allowed. Each class day is fully covered by the daily amount.</p></div><span class="badge expense">Disabled</span></div></section><section class="panel glass"><div class="panel-header"><h3>Privacy & security</h3></div><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></section></div>`;
 }
 
 function bindViewEvents() {
@@ -701,6 +701,29 @@ function bindViewEvents() {
   $("#importFile")?.addEventListener("change", handleImport);
   $("#mergeFile")?.addEventListener("change", handleMergeFile);
   $("#addNoClassDateBtn")?.addEventListener("click", addNoClassDate);
+  $("#recordingDatePicker")?.addEventListener("change", async (e) => {
+    const key = e.target.value;
+    if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key))
+      return showToast("Choose a valid date.", "error");
+    const deviceKey = localDateKey(new Date());
+    if (key === deviceKey) {
+      await saveSetting("appDateKey", "");
+      await log("Reset recording date", "Recording date returned to today.");
+    } else {
+      await saveSetting("appDateKey", key);
+      await log(
+        "Set recording date",
+        `Recording date set to ${dateOnly(dateFromKey(key))}.`,
+      );
+    }
+    await refresh();
+    render();
+    showToast(
+      key === deviceKey
+        ? "Recording date: Today"
+        : `Recording date: ${dateOnly(dateFromKey(key))}`,
+    );
+  });
 }
 
 function displayStudent(s) {
@@ -2284,19 +2307,6 @@ document.addEventListener("click", async (e) => {
   if (action === "export-json") return exportJSON();
   if (action === "export-csv") return exportCSV();
   if (action === "export-students-csv") return exportStudentsCSV();
-  if (action === "apply-app-date") {
-    const key = $("#appDatePicker")?.value;
-    if (!key || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(key))
-      return showToast("Choose a valid date.", "error");
-    await saveSetting("appDateKey", key);
-    await log(
-      "Adjusted app date",
-      `App date set to ${dateOnly(dateFromKey(key))}.`,
-    );
-    await refresh();
-    render();
-    return showToast(`App date set to ${dateOnly(dateFromKey(key))}.`);
-  }
   if (action === "start-session") return startCollectionSession();
   if (action === "reset-quick-session") {
     quickSessionTotal = 0;
@@ -2321,10 +2331,10 @@ document.addEventListener("click", async (e) => {
   if (action === "view-today-unpaid") return renderTodayUnpaid();
   if (action === "reset-app-date") {
     await saveSetting("appDateKey", "");
-    await log("Reset app date", "App date returned to the device date.");
+    await log("Reset recording date", "Recording date returned to today.");
     await refresh();
     render();
-    return showToast("App date reset to today.");
+    return showToast("Recording date: Today");
   }
   if (action === "print-report") return window.print();
   if (action === "empty-recycle")
