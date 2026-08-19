@@ -1,7 +1,7 @@
 {
-  "name": "BSCS2C Treasurer",
-  "short_name": "BSCS2C Treasury",
-  "description": "Offline-first class treasury dashboard for BSCS2C.",
+  "name": "Kolekta",
+  "short_name": "Kolekta",
+  "description": "Offline-first class treasury dashboard for any section or department.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b1020",

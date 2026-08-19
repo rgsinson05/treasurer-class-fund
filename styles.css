@@ -2368,3 +2368,40 @@ button,
 .pager .small-btn:disabled {
   opacity: 0.4;
 }
+
+/* First-run setup screen */
+.setup-card {
+  max-height: 92vh;
+  overflow: auto;
+}
+.setup-card form {
+  margin-top: 20px;
+}
+.setup-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 12px;
+  color: #71809c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.setup-divider::before,
+.setup-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.setup-restore-btn {
+  display: block;
+  text-align: center;
+  border-radius: 15px;
+  padding: 13px 14px;
+}
+.setup-hint {
+  font-size: 10px;
+  text-align: center;
+  margin: 10px 0 0;
+}

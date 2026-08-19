@@ -10,6 +10,7 @@ const STORE_NAMES = [
 ];
 const ADMIN = "Treasurer";
 const PASSWORD = "BSCS2C";
+const APP_NAME = "Kolekta";
 
 let db;
 let dbReadyPromise = Promise.resolve();
@@ -34,6 +35,7 @@ let state = {
     departmentName: "",
     tagline: "",
     brandingConfigured: false,
+    setupComplete: false,
     eventName: "Christmas Party",
     noClassDates: [],
     appDateKey: "",
@@ -82,7 +84,7 @@ function openDB() {
     req.onblocked = () =>
       reject(
         new Error(
-          "The local database is busy. Close any other BSCS2C Treasurer tab or installed app and reopen this one.",
+          `The local database is busy. Close any other ${APP_NAME} tab or installed copy and reopen this one.`,
         ),
       );
     req.onerror = () =>
@@ -1972,7 +1974,7 @@ function applyBrandingValues(b) {
     tag.textContent = b.tagline || "Offline-first Treasurer Dashboard";
   const brandName = $("#brandName");
   if (brandName) brandName.textContent = b.section;
-  document.title = `${b.section} Treasurer`;
+  document.title = `${b.section} · ${APP_NAME}`;
 }
 function applyBranding() {
   const b = currentBranding();
@@ -2001,35 +2003,112 @@ function brandSlug() {
     .replace(/^-+|-+$/g, "");
   return slug || "treasury";
 }
-function brandingSetupModal() {
-  const b = currentBranding();
-  modal(
-    "Set up your dashboard",
-    `<p class="footer-note" style="margin:0 0 14px">Personalize this treasury for your section. You can change these anytime in Settings.</p><div class="form-field"><label>Section / class name</label><input class="input" id="setupSection" maxlength="40" value="${esc(b.section)}" placeholder="e.g. BSCS2C"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="setupDepartment" maxlength="80" value="${esc(b.department)}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="setupTagline" maxlength="80" value="${esc(b.tagline)}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="modal-actions"><button type="button" class="ghost-btn" id="setupSkip">Skip for now</button><button type="button" class="primary-btn" id="setupSave">Save</button></div>`,
+function needsSetup() {
+  return !(
+    state.settings.setupComplete ||
+    state.settings.brandingConfigured ||
+    isCustomPasswordSet() ||
+    state.students.length > 0 ||
+    state.contributions.length > 0
   );
-  $("#setupSkip").onclick = async () => {
-    await saveSetting("brandingConfigured", true);
-    closeModal();
-    showToast("You can set your section name in Settings anytime.");
-  };
-  $("#setupSave").onclick = async () => {
-    const section = $("#setupSection").value.trim() || "BSCS2C";
-    const department = $("#setupDepartment").value.trim();
-    const tagline = $("#setupTagline").value.trim();
-    await saveSetting("className", section);
-    await saveSetting("departmentName", department);
-    await saveSetting("tagline", tagline);
-    await saveSetting("brandingConfigured", true);
-    await log(
-      "Set dashboard branding",
-      `Section "${section}"${department ? ` · ${department}` : ""} configured.`,
+}
+function showSetupScreen() {
+  $("#loginScreen")?.classList.add("hidden");
+  $("#appShell")?.classList.add("hidden");
+  $("#setupScreen")?.classList.remove("hidden");
+  const nameEl = $("#setupAppName");
+  if (nameEl) nameEl.textContent = APP_NAME;
+  document.title = `Set up · ${APP_NAME}`;
+  $("#setupSection")?.focus();
+}
+function showLoginScreen() {
+  $("#setupScreen")?.classList.add("hidden");
+  $("#appShell")?.classList.add("hidden");
+  $("#loginScreen")?.classList.remove("hidden");
+  applyBranding();
+  $("#passwordInput")?.focus();
+}
+async function handleSetupSubmit(e) {
+  e.preventDefault();
+  const section = $("#setupSection").value.trim() || "BSCS2C";
+  const department = $("#setupDepartment").value.trim();
+  const tagline = $("#setupTagline").value.trim();
+  const pw = String($("#setupPassword").value || "").trim();
+  const pwc = String($("#setupPasswordConfirm").value || "").trim();
+  if (pw.length < 4)
+    return showToast("Password must be at least 4 characters.", "error");
+  if (pw !== pwc) return showToast("Passwords do not match.", "error");
+  try {
+    await initializeData();
+  } catch (err) {
+    return showToast(
+      err.message || `Could not open local data. Reopen ${APP_NAME} and retry.`,
+      "error",
     );
+  }
+  const rec = await makePasswordRecord(pw);
+  await saveSetting("passwordAuth", rec);
+  await saveSetting("className", section);
+  await saveSetting("departmentName", department);
+  await saveSetting("tagline", tagline);
+  await saveSetting("brandingConfigured", true);
+  await saveSetting("setupComplete", true);
+  await log(
+    "Completed dashboard setup",
+    `Section "${section}"${department ? ` · ${department}` : ""} configured with a custom password.`,
+  );
+  await refresh();
+  applyBranding();
+  sessionStorage.setItem("bscs2c-unlocked", "1");
+  unlock();
+  showToast("Dashboard ready");
+}
+async function handleSetupRestore(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.format !== "BSCS2C-TREASURY" || !data.data)
+      throw new Error("Invalid backup");
+    try {
+      await initializeData();
+    } catch (err) {
+      showToast(
+        err.message || `Could not open local data. Reopen ${APP_NAME} and retry.`,
+        "error",
+      );
+      e.target.value = "";
+      return;
+    }
+    for (const store of STORE_NAMES) {
+      const old = await getAll(store);
+      for (const x of old) await del(store, x.id);
+    }
+    for (const [store, items] of Object.entries(data.data)) {
+      if (store === "settings") {
+        for (const [key, value] of Object.entries(items))
+          await put("settings", { id: key, key, value });
+      } else if (STORE_NAMES.includes(store)) {
+        for (const x of items) await put(store, x);
+      }
+    }
+    await saveSetting("setupComplete", true);
     await refresh();
     applyBranding();
-    closeModal();
-    render();
-    showToast("Dashboard personalized");
-  };
+    await log(
+      "Restored backup at setup",
+      "Imported a JSON backup during first-time setup.",
+    );
+    showToast("Backup restored. Log in with your backup's password.");
+    showLoginScreen();
+  } catch (err) {
+    showToast("Could not read that backup file.", "error");
+  }
+  e.target.value = "";
+}
+function bindSetupScreen() {
+  $("#setupForm")?.addEventListener("submit", handleSetupSubmit);
+  $("#setupRestoreFile")?.addEventListener("change", handleSetupRestore);
 }
 async function initializeData() {
   if (dataInitPromise) return dataInitPromise;
@@ -2057,6 +2136,7 @@ async function init() {
   const loginForm = $("#loginForm");
   const passwordInput = $("#passwordInput");
   applyBrandingFromMirror();
+  bindSetupScreen();
   if (loginForm)
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
@@ -2066,7 +2146,7 @@ async function init() {
       } catch (err) {
         return showToast(
           err.message ||
-            "Local data could not be opened. Close other BSCS2C Treasurer tabs and try again.",
+            `Local data could not be opened. Close other ${APP_NAME} tabs and try again.`,
           "error",
         );
       }
@@ -2096,22 +2176,24 @@ async function init() {
   updateOnline();
   window.addEventListener("online", updateOnline);
   window.addEventListener("offline", updateOnline);
-  if (sessionStorage.getItem("bscs2c-unlocked") === "1") {
-    try {
-      await initializeData();
-      unlock();
-    } catch (err) {
-      sessionStorage.removeItem("bscs2c-unlocked");
-      showToast(err.message || "Could not open local data.", "error");
-    }
+  try {
+    await initializeData();
+  } catch (err) {
+    showToast(err.message || "Could not open local data.", "error");
+    return;
   }
+  if (sessionStorage.getItem("bscs2c-unlocked") === "1" && !needsSetup()) {
+    unlock();
+    return;
+  }
+  if (needsSetup()) showSetupScreen();
 }
 function unlock() {
+  $("#setupScreen")?.classList.add("hidden");
   $("#loginScreen").classList.add("hidden");
   $("#appShell").classList.remove("hidden");
   render();
   applyBranding();
-  if (!state.settings.brandingConfigured) brandingSetupModal();
 }
 function updateOnline() {
   const p = $("#onlinePill");
