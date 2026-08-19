@@ -2667,3 +2667,121 @@ button,
   font-weight: 900;
   flex: 0 0 auto;
 }
+
+/* How it works: built-in guide */
+.guide-intro {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0 0 6px;
+}
+.guide-list {
+  display: grid;
+  gap: 8px;
+}
+.guide-item {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.022);
+  overflow: hidden;
+}
+.guide-summary {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  cursor: pointer;
+  list-style: none;
+  padding: 11px 12px;
+}
+.guide-summary::-webkit-details-marker {
+  display: none;
+}
+.guide-summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.guide-ic {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(139, 124, 255, 0.14);
+  color: #c4bdff;
+  flex: 0 0 auto;
+}
+.guide-ic svg {
+  width: 17px;
+  height: 17px;
+}
+.guide-title {
+  font-size: 13px;
+  font-weight: 800;
+  flex: 1;
+  min-width: 0;
+}
+.guide-arrow {
+  color: #8b7cff;
+  font-size: 18px;
+  font-weight: 900;
+  transition: transform 0.2s ease;
+  flex: 0 0 auto;
+}
+.guide-item[open] > .guide-summary .guide-arrow {
+  transform: rotate(90deg);
+}
+.guide-body {
+  padding: 2px 14px 14px;
+  font-size: 12px;
+  color: #c3cbdd;
+  line-height: 1.65;
+}
+.guide-body p {
+  margin: 0 0 8px;
+}
+.guide-body p:last-child {
+  margin-bottom: 0;
+}
+.guide-body b {
+  color: #e9edf7;
+  font-weight: 800;
+}
+.guide-steps {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+.guide-tasks {
+  display: grid;
+}
+.guide-task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.guide-task:last-child {
+  border-bottom: 0;
+}
+.guide-task span {
+  color: var(--muted);
+}
+.guide-task b {
+  color: #bdb6ff;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .guide-task {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .guide-task b {
+    text-align: left;
+    white-space: normal;
+  }
+}
