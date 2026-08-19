@@ -19,6 +19,8 @@ let dataInitPromise = null;
 let currentView = "dashboard";
 let quickSessionTotal = 0;
 let quickSessionCount = 0;
+let quickOverrideOn = false;
+let quickOverrideValue = "";
 let contributionPage = 1;
 const CONTRIBUTION_PAGE_SIZE = 15;
 const ACTIVITY_RECENT_LIMIT = 20;
@@ -199,11 +201,17 @@ async function softDelete(store, obj, type) {
   );
 }
 
+function enforceToastLimit(max = 3) {
+  const region = $("#toastRegion");
+  if (!region) return;
+  while (region.children.length > max) region.firstElementChild.remove();
+}
 function showToast(message, type = "success") {
   const el = document.createElement("div");
   el.className = `toast ${type}`;
   el.textContent = message;
   $("#toastRegion").appendChild(el);
+  enforceToastLimit();
   setTimeout(() => el.remove(), 3200);
 }
 function showActionToast(message, actionLabel, onAction, type = "success") {
@@ -222,7 +230,8 @@ function showActionToast(message, actionLabel, onAction, type = "success") {
   el.appendChild(msg);
   el.appendChild(btn);
   $("#toastRegion").appendChild(el);
-  setTimeout(() => el.remove(), 6000);
+  enforceToastLimit();
+  setTimeout(() => el.remove(), 4500);
 }
 function vibrate(ms = 35) {
   try {
@@ -230,6 +239,8 @@ function vibrate(ms = 35) {
   } catch {}
 }
 function modal(title, body, actions = "") {
+  const region = $("#toastRegion");
+  if (region) region.innerHTML = "";
   const root = $("#modalRoot");
   root.innerHTML = `<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h3>${title}</h3><button class="icon-btn" data-close-modal>×</button></div>${body}${actions}</div></div>`;
   $("#modalBackdrop").addEventListener("click", (e) => {
@@ -457,7 +468,11 @@ function studentsTable(filter = "", status = "all") {
     .join("")}</tbody></table></div>`;
 }
 
-function renderQuickRecord(q = "") {
+function renderQuickRecord() {
+  const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
+  return `<div class="view"><section class="panel glass quick-record-panel"><div class="panel-header"><div><h3>Quick Record</h3><span class="muted">Record one or more ${money(fixed)} class-day contributions in a single payment.</span></div><span class="badge paid">${money(fixed)} / class day</span></div><div class="quick-session-total"><div><span class="muted">Collected this round</span><strong>${money(quickSessionTotal)}</strong></div><span class="muted">${quickSessionCount} payment${quickSessionCount === 1 ? "" : "s"}</span>${quickSessionCount > 0 ? button("Reset", "ghost-btn small-btn", 'data-action="reset-quick-session"') : ""}</div><div class="quick-record-controls"><div class="quick-amount-box"><span class="muted">Default payment</span><strong>${money(fixed)}</strong></div><label class="override-toggle"><input type="checkbox" id="quickOverrideToggle" ${quickOverrideOn ? "checked" : ""}> <span>Override amount</span></label><input class="input quick-override-input" id="quickOverrideAmount" type="number" min="${fixed}" step="0.01" inputmode="decimal" placeholder="e.g. ${fixed * 2}" value="${quickOverrideOn ? esc(String(quickOverrideValue)) : ""}" ${quickOverrideOn ? "" : "disabled"}></div><div class="search-row quick-search-row"><input class="input search-input" id="quickRecordSearch" placeholder="Search student name or identifier..." autocomplete="off"></div><div class="quick-student-list quick-student-scroll" id="quickStudentList">${quickStudentList("")}</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div></section></div>`;
+}
+function quickStudentList(q = "") {
   const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
   const rows = state.students
     .filter(
@@ -466,34 +481,32 @@ function renderQuickRecord(q = "") {
         displayStudent(s).toLowerCase().includes(q.toLowerCase()),
     )
     .sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)));
-  return `<div class="view"><section class="panel glass quick-record-panel"><div class="panel-header"><div><h3>Quick Record</h3><span class="muted">Record one or more ${money(fixed)} class-day contributions in a single payment.</span></div><span class="badge paid">${money(fixed)} / class day</span></div><div class="quick-session-total"><div><span class="muted">Collected this round</span><strong>${money(quickSessionTotal)}</strong></div><span class="muted">${quickSessionCount} payment${quickSessionCount === 1 ? "" : "s"}</span>${quickSessionCount > 0 ? button("Reset", "ghost-btn small-btn", 'data-action="reset-quick-session"') : ""}</div><div class="quick-record-controls"><div class="quick-amount-box"><span class="muted">Default payment</span><strong>${money(fixed)}</strong></div><label class="override-toggle"><input type="checkbox" id="quickOverrideToggle"> <span>Override amount</span></label><input class="input quick-override-input" id="quickOverrideAmount" type="number" min="${fixed}" step="0.01" inputmode="decimal" placeholder="e.g. ${fixed * 2}" disabled></div><div class="search-row quick-search-row"><input class="input search-input" id="quickRecordSearch" value="${esc(q)}" placeholder="Search student name or identifier..." autocomplete="off"></div><div class="quick-student-list">${
-    rows.length
-      ? rows
-          .map((s) => {
-            const payments = state.contributions
-              .filter((x) => x.studentId === s.id)
-              .sort((a, b) => new Date(b.at) - new Date(a.at));
-            const ledger = studentLedger(s.id);
-            const today = effectiveTodayKey();
-            const todayDue = ledger.due.find((x) => x.date === today);
-            const status =
-              todayDue?.status === "paid"
-                ? "Paid today"
-                : todayDue?.status === "advance"
-                  ? "Paid in advance"
-                  : todayDue
-                    ? "Due today"
-                    : "No class today";
-            const balance = ledger.outstanding
-              ? `${money(ledger.outstanding)} due`
-              : ledger.advance.length
-                ? `${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead`
-                : "Up to date";
-            return `<div class="quick-student-row"><div class="quick-student-info"><strong>${esc(displayStudent(s))}</strong><span>${status} · ${balance} · ${payments.length ? `${payments.length} payment${payments.length === 1 ? "" : "s"}` : "No payments yet"}</span></div><div class="quick-student-actions">${button("History", "small-btn", 'data-payment-history="' + s.id + '"')}${button("Record " + money(fixed), "primary-btn quick-record-btn", 'data-quick-record="' + s.id + '"')}</div></div>`;
-          })
-          .join("")
-      : '<div class="empty">No active students found.</div>'
-  }</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div></section></div>`;
+  if (!rows.length)
+    return `<div class="empty">${q ? "No students match your search." : "No active students found."}</div>`;
+  return rows
+    .map((s) => {
+      const payments = state.contributions
+        .filter((x) => x.studentId === s.id)
+        .sort((a, b) => new Date(b.at) - new Date(a.at));
+      const ledger = studentLedger(s.id);
+      const today = effectiveTodayKey();
+      const todayDue = ledger.due.find((x) => x.date === today);
+      const status =
+        todayDue?.status === "paid"
+          ? "Paid today"
+          : todayDue?.status === "advance"
+            ? "Paid in advance"
+            : todayDue
+              ? "Due today"
+              : "No class today";
+      const balance = ledger.outstanding
+        ? `${money(ledger.outstanding)} due`
+        : ledger.advance.length
+          ? `${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead`
+          : "Up to date";
+      return `<div class="quick-student-row"><div class="quick-student-info"><strong>${esc(displayStudent(s))}</strong><span>${status} · ${balance} · ${payments.length ? `${payments.length} payment${payments.length === 1 ? "" : "s"}` : "No payments yet"}</span></div><div class="quick-student-actions">${button("History", "small-btn", 'data-payment-history="' + s.id + '"')}${button("Record " + money(fixed), "primary-btn quick-record-btn", 'data-quick-record="' + s.id + '"')}</div></div>`;
+    })
+    .join("");
 }
 function renderContributions() {
   contributionPage = 1;
@@ -616,17 +629,12 @@ function renderSettings() {
 
 function bindViewEvents() {
   $("#quickRecordSearch")?.addEventListener("input", (e) => {
-    const q = e.target.value;
-    const container = $("#viewContainer");
-    container.innerHTML = renderQuickRecord(q);
-    bindViewEvents();
-    const input = $("#quickRecordSearch");
-    if (input) {
-      input.focus();
-      input.setSelectionRange(q.length, q.length);
-    }
+    const list = $("#quickStudentList");
+    if (list) list.innerHTML = quickStudentList(e.target.value);
+    updateQuickRecordButtons();
   });
   $("#quickOverrideToggle")?.addEventListener("change", (e) => {
+    quickOverrideOn = e.target.checked;
     const input = $("#quickOverrideAmount");
     if (input) {
       input.disabled = !e.target.checked;
@@ -637,9 +645,11 @@ function bindViewEvents() {
       updateQuickRecordButtons();
     }
   });
-  $("#quickOverrideAmount")?.addEventListener("input", () =>
-    updateQuickRecordButtons(),
-  );
+  $("#quickOverrideAmount")?.addEventListener("input", (e) => {
+    quickOverrideValue = e.target.value;
+    updateQuickRecordButtons();
+  });
+  if ($("#quickStudentList")) updateQuickRecordButtons();
   $("#studentSearch")?.addEventListener("input", (e) => {
     $("#studentsTable").innerHTML = studentsTable(
       e.target.value,

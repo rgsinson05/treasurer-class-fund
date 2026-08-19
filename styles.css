@@ -638,6 +638,7 @@ button:disabled {
   z-index: 200;
   display: grid;
   gap: 8px;
+  pointer-events: none;
 }
 .toast {
   min-width: 240px;
@@ -648,6 +649,7 @@ button:disabled {
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   font-size: 12px;
+  pointer-events: auto;
 }
 .toast.success {
   border-color: rgba(85, 214, 190, 0.25);
@@ -2404,4 +2406,16 @@ button,
   font-size: 10px;
   text-align: center;
   margin: 10px 0 0;
+}
+
+/* Quick Record: fixed-height scrolling student list */
+.quick-student-scroll {
+  max-height: 52vh;
+  overflow: auto;
+  padding-right: 2px;
+}
+@media (max-width: 800px) {
+  .quick-student-scroll {
+    max-height: 56vh;
+  }
 }
