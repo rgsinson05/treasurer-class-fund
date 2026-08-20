@@ -411,14 +411,17 @@ function renderDashboard() {
     .slice(0, 7);
   return `<div class="view">
     ${state.settings.appDateKey ? `<section class="panel glass backdate-banner"><div class="backdate-banner-main"><span class="backdate-dot"></span><div><strong>Recording for ${dateOnly(effectiveTodayDate())}</strong><span class="muted">You're back-dated — device date is ${dateOnly(new Date())}. New payments and today's totals use this date.</span></div></div>${button("Back to today", "primary-btn", 'data-action="reset-app-date"')}</section>` : ""}
-    <section class="cards">
-      ${stat("Total Collected", money(total), "↑ Contributions", "₱")}${stat("Total Expenses", money(expenses), "↓ Spending", "↗")}${stat("Current Balance", money(balance), "Available treasury", "◎")}${stat("Paid Students", `${paid} / ${active}`, "Recorded contributors", "✓")}
+    <section class="dash-metrics">
+      <div class="dash-metric collected">${reportsIcon(REP_IC.cash)}<div class="dash-metric-body"><span>Total Collected</span><strong>${money(total)}</strong></div></div>
+      <div class="dash-metric spent">${reportsIcon(REP_IC.receipt)}<div class="dash-metric-body"><span>Total Expenses</span><strong>${money(expenses)}</strong></div></div>
+      <div class="dash-metric balance">${reportsIcon(REP_IC.balance)}<div class="dash-metric-body"><span>Current Balance</span><strong>${money(balance)}</strong></div></div>
+      <div class="dash-metric students">${reportsIcon(REP_IC.usersCheck)}<div class="dash-metric-body"><span>Paid Students</span><strong>${paid} / ${active}</strong></div></div>
     </section>
     <section class="grid-2">
-      <div class="panel glass"><div class="panel-header"><div><h3>Contribution progress</h3><span class="muted">${esc(state.settings.eventName)}</span></div><span class="badge paid">${Math.round(pct)}%</span></div><div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div><div class="progress-meta"><span>${paid} paid</span><span>${Math.max(0, active - paid)} not recorded</span></div></div><div class="footer-note">Class days are tracked at the fixed daily amount; past due days and advance payments are allocated automatically.</div></div>
-      <div class="panel glass"><div class="panel-header"><h3>Quick actions</h3></div><div class="search-row">${button("+ Add Student", "primary-btn", 'data-action="add-student"')}${button("+ Record Contribution", "ghost-btn", 'data-action="add-contribution"')}${button("+ Add Expense", "ghost-btn", 'data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
+      <div class="panel glass dash-progress"><div class="panel-header with-ic">${reportsIcon(REP_IC.chart)}<div><h3>Contribution progress</h3><span class="muted">${esc(state.settings.eventName)}</span></div><span class="badge paid">${Math.round(pct)}%</span></div><div class="progress-wrap"><div class="progress-track tall"><div class="progress-bar" style="width:${pct}%"></div></div><div class="progress-meta"><span><strong>${paid}</strong> of ${active} paid</span><span>${Math.max(0, active - paid)} not recorded</span></div></div><div class="footer-note">Class days are tracked at the fixed daily amount; past due days and advance payments are allocated automatically.</div></div>
+      <div class="panel glass"><div class="panel-header with-ic">${reportsIcon(REP_IC.bolt)}<div><h3>Quick actions</h3></div></div><div class="dash-actions">${button("+ Add Student", "primary-btn", 'data-action="add-student"')}${button("+ Record Contribution", "ghost-btn", 'data-action="add-contribution"')}${button("+ Add Expense", "ghost-btn", 'data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
     </section>
-    <section class="panel glass"><div class="panel-header"><div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="contributions"')}</div>${recentTable(recent)}</section>
+    <section class="panel glass"><div class="panel-header with-ic">${reportsIcon(REP_IC.list)}<div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="contributions"')}</div>${recentTable(recent)}</section>
     <div class="app-footer"><div class="dashboard-credit">Developed by <strong>RG Sinson</strong></div><div class="dashboard-rights">© 2026 RG Sinson · All rights reserved.</div></div>
   </div>`;
 }
@@ -641,6 +644,8 @@ const REP_IC = {
   alert: `<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.2"/><path d="M12 16.3h.01"/>`,
   clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7.2V12l3.2 2"/>`,
   download: `<path d="M12 3v11"/><path d="M7.5 10 12 14.5 16.5 10"/><path d="M5 20h14"/>`,
+  bolt: `<path d="M13 2 5 13h5l-1 9 8-12h-5l1-8z"/>`,
+  list: `<path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>`,
 };
 function reportsIcon(paths) {
   return `<span class="rep-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></span>`;
@@ -825,6 +830,11 @@ function howItWorksGuide() {
       `<path d="M6 2.5h12v19l-3-1.7-3 1.7-3-1.7-3 1.7z"/><path d="M9 7h6M9 11h6M9 15h4"/>`,
       "Expenses",
       `<p>Money the class spends. Record each expense with a category, amount, and description.</p><p>Expenses subtract from your balance and appear in <b>Reports</b>.</p>`,
+    ],
+    [
+      `<path d="M4 4v16h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>`,
+      "Reports",
+      `<p>A one-glance financial overview: the <b>Treasury Summary</b> shows Collected, Expenses, and Balance, plus students, contributors, and unpaid dues.</p><p><b>Collection Overview</b> shows expected vs collected with a progress bar; <b>Student Contribution Status</b> counts who's paid, partial, unpaid, or in advance; and <b>Expense Breakdown</b> lists spending by category.</p><p>Use <b>Export JSON Backup</b> to save all data, <b>Export Transactions CSV</b> for a spreadsheet, or <b>Print Report</b> for a paper copy.</p>`,
     ],
     [
       `<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9h17M8 2.5v4M16 2.5v4"/>`,
