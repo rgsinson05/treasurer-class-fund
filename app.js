@@ -37,6 +37,7 @@ let state = {
     brandingConfigured: false,
     setupComplete: false,
     eventName: "Christmas Party",
+    contributionStartDate: "",
     noClassDates: [],
     appDateKey: "",
   },
@@ -874,7 +875,7 @@ function howItWorksGuide() {
   return `<p class="guide-intro">This is an offline class-treasury tracker for your section. Record daily contributions, see who has paid, log expenses, and reconcile cash — everything is saved on this device. Tap a topic to learn more.</p><div class="guide-list">${rows.map(([ic, t, b]) => guideRow(ic, t, b)).join("")}</div>`;
 }
 function renderSettings() {
-  return `<div class="view settings-view"><details class="settings-section panel glass" open><summary class="settings-summary"><span class="settings-summary-title">General</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="form-field"><label>Section / class name</label><input class="input" id="settingClass" maxlength="40" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="settingDepartment" maxlength="80" value="${esc(state.settings.departmentName || "")}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="settingTagline" maxlength="80" value="${esc(state.settings.tagline || "")}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="form-field" style="margin-top:13px"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Data & backup</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Recording date</span><span class="badge ${state.settings.appDateKey ? "expense" : "active"} settings-summary-badge">${state.settings.appDateKey ? "Back-dated" : "Today"}</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><p class="settings-section-sub muted">The date new payments and "today" totals are recorded against. Leave on Today for normal use.</p><div class="app-date-controls"><div><strong>${dateOnly(effectiveTodayDate())}</strong><span class="muted">${state.settings.appDateKey ? `Back-dated from today (${dateOnly(new Date())})` : "Using your device date"}</span></div><input class="input app-date-input" id="recordingDatePicker" type="date" max="${localDateKey(new Date())}" value="${effectiveTodayKey()}" aria-label="Recording date">${state.settings.appDateKey ? button("Back to today", "ghost-btn", 'data-action="reset-app-date"') : ""}</div><div class="footer-note">Pick a date and it applies right away. Forgot to collect last Friday? Set the date to that Friday, record everyone, then tap "Back to today" — you can repeat this for several past days.</div></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">How it works</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary>${howItWorksGuide()}</details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Security</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></details></div>`;
+  return `<div class="view settings-view"><details class="settings-section panel glass" open><summary class="settings-summary"><span class="settings-summary-title">General</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="settings-subhead">Treasury identity</div><div class="form-field"><label>Class / Organization name</label><input class="input" id="settingClass" maxlength="40" value="${esc(state.settings.className)}"></div><div class="form-field" style="margin-top:13px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="settingDepartment" maxlength="80" value="${esc(state.settings.departmentName || "")}" placeholder="e.g. College of Computer Studies"></div><div class="form-field" style="margin-top:13px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="settingTagline" maxlength="80" value="${esc(state.settings.tagline || "")}" placeholder="e.g. Offline-first Treasurer Dashboard"></div><div class="form-field" style="margin-top:13px"><label>Event</label><input class="input" id="settingEvent" value="${esc(state.settings.eventName)}"></div><div class="settings-subhead">Contribution settings</div><div class="form-field"><label>Daily contribution amount</label><input class="input" id="settingAmount" type="number" min="0.01" step="0.01" value="${Number(state.settings.contributionAmount) || 5}"><div class="footer-note">Each class day creates exactly this amount. Payments must be whole multiples of it.</div></div><div class="form-field" style="margin-top:13px"><label>Contribution start date</label><input class="input" id="settingStartDate" type="date" max="${localDateKey(new Date())}" value="${esc(state.settings.contributionStartDate || "")}"><div class="footer-note">The first class day contributions count from. Leave blank to use the earliest student's date.</div></div>${noClassDatesSection()}<button class="primary-btn" style="margin-top:15px" data-action="save-settings">Save settings</button></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Data & backup</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="data-actions"><div class="data-action-card kind-export"><div class="data-action-icon">⬇</div><div class="data-action-body"><strong>Export full backup</strong><p>Download students, transactions, settings and audit data.</p></div><button class="data-action-btn" data-action="export-json">Download JSON</button></div><div class="data-action-card kind-restore"><div class="data-action-icon">↻</div><div class="data-action-body"><strong>Restore backup</strong><p>Import a JSON backup into this browser.</p><span class="data-action-tag warn">⚠ Replaces all current data</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="importFile" accept="application/json"></label></div><div class="data-action-card kind-merge"><div class="data-action-icon">⇄</div><div class="data-action-body"><strong>Merge from another device</strong><p>Add payment records collected on another phone (e.g. by an assistant), matched to your existing students.</p><span class="data-action-tag safe">✓ Adds only, doesn't replace</span></div><label class="data-action-btn file-btn">Choose file<input type="file" id="mergeFile" accept="application/json"></label></div><div class="data-action-card kind-csv"><div class="data-action-icon">▤</div><div class="data-action-body"><strong>Export CSV</strong><p>Spreadsheet-friendly transaction history.</p></div><div class="data-action-btn-group"><button class="data-action-btn" data-action="export-csv">Transactions</button><button class="data-action-btn" data-action="export-students-csv">Students</button></div></div></div><p class="footer-note">IndexedDB is used as the primary local database. Keep a JSON backup somewhere safe.</p></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Recording date</span><span class="badge ${state.settings.appDateKey ? "expense" : "active"} settings-summary-badge">${state.settings.appDateKey ? "Back-dated" : "Today"}</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><p class="settings-section-sub muted">The date new payments and "today" totals are recorded against. Leave on Today for normal use.</p><div class="app-date-controls"><div><strong>${dateOnly(effectiveTodayDate())}</strong><span class="muted">${state.settings.appDateKey ? `Back-dated from today (${dateOnly(new Date())})` : "Using your device date"}</span></div><input class="input app-date-input" id="recordingDatePicker" type="date" max="${localDateKey(new Date())}" value="${effectiveTodayKey()}" aria-label="Recording date">${state.settings.appDateKey ? button("Back to today", "ghost-btn", 'data-action="reset-app-date"') : ""}</div><div class="footer-note">Pick a date and it applies right away. Forgot to collect last Friday? Set the date to that Friday, record everyone, then tap "Back to today" — you can repeat this for several past days.</div></details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">How it works</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary>${howItWorksGuide()}</details><details class="settings-section panel glass"><summary class="settings-summary"><span class="settings-summary-title">Security</span><span class="settings-chevron" aria-hidden="true">⌄</span></summary><div class="setting-row"><div><strong>Treasurer password</strong><p>${isCustomPasswordSet() ? "Custom password set · unlocks this dashboard on this device." : "Using the default password · set your own to secure the dashboard."}</p></div>${button("Change password", "small-btn", 'data-action="change-password"')}</div><div class="setting-row"><div><strong>Offline mode</strong><p>Service worker caches the application shell.</p></div><span class="badge paid">PWA ready</span></div></details></div>`;
 }
 
 function bindViewEvents() {
@@ -1098,6 +1099,11 @@ function classDaysThrough(startKey, endKey) {
   return out;
 }
 function classStartKey() {
+  if (
+    typeof state.settings.contributionStartDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(state.settings.contributionStartDate)
+  )
+    return state.settings.contributionStartDate;
   if (!state.students.length) return effectiveTodayKey();
   return state.students
     .map((x) => localDateKey(x.createdAt || new Date()))
@@ -2376,14 +2382,35 @@ function showLoginScreen() {
 }
 async function handleSetupSubmit(e) {
   e.preventDefault();
-  const section = $("#setupSection").value.trim() || "BSCS2C";
+  const section = $("#setupSection").value.trim();
   const department = $("#setupDepartment").value.trim();
   const tagline = $("#setupTagline").value.trim();
+  const event = $("#setupEvent").value.trim();
+  const amount = Number($("#setupAmount").value);
+  const startDate = $("#setupStartDate").value;
   const pw = String($("#setupPassword").value || "").trim();
   const pwc = String($("#setupPasswordConfirm").value || "").trim();
+  if (!section)
+    return showToast("Enter your class or organization name.", "error");
+  if (!event) return showToast("Enter the event or fund purpose.", "error");
+  if (!Number.isFinite(amount) || amount <= 0)
+    return showToast("Enter a daily contribution amount above zero.", "error");
+  if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate))
+    return showToast("Choose a contribution start date.", "error");
+  if (startDate > localDateKey(new Date()))
+    return showToast("The start date can't be in the future.", "error");
   if (pw.length < 4)
     return showToast("Password must be at least 4 characters.", "error");
   if (pw !== pwc) return showToast("Passwords do not match.", "error");
+  const cfg = { section, department, tagline, event, amount, startDate, pw };
+  modal(
+    "Ready to create your treasury?",
+    `<div class="setup-confirm"><div><span>Class / Organization</span><strong>${esc(section)}</strong></div><div><span>Event</span><strong>${esc(event)}</strong></div><div><span>Daily contribution</span><strong>${money(amount)}</strong></div><div><span>Start date</span><strong>${dateOnly(dateFromKey(startDate))}</strong></div></div>`,
+    `<div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button type="button" class="primary-btn" id="confirmCreateTreasury">Create Dashboard</button></div>`,
+  );
+  $("#confirmCreateTreasury").onclick = () => createTreasury(cfg);
+}
+async function createTreasury(cfg) {
   try {
     await initializeData();
   } catch (err) {
@@ -2392,19 +2419,23 @@ async function handleSetupSubmit(e) {
       "error",
     );
   }
-  const rec = await makePasswordRecord(pw);
+  const rec = await makePasswordRecord(cfg.pw);
   await saveSetting("passwordAuth", rec);
-  await saveSetting("className", section);
-  await saveSetting("departmentName", department);
-  await saveSetting("tagline", tagline);
+  await saveSetting("className", cfg.section);
+  await saveSetting("departmentName", cfg.department);
+  await saveSetting("tagline", cfg.tagline);
+  await saveSetting("eventName", cfg.event);
+  await saveSetting("contributionAmount", cfg.amount);
+  await saveSetting("contributionStartDate", cfg.startDate);
   await saveSetting("brandingConfigured", true);
   await saveSetting("setupComplete", true);
   await log(
     "Completed dashboard setup",
-    `Section "${section}"${department ? ` · ${department}` : ""} configured with a custom password.`,
+    `Section "${cfg.section}" · ${cfg.event} · ${money(cfg.amount)}/day from ${dateOnly(dateFromKey(cfg.startDate))}.`,
   );
   await refresh();
   applyBranding();
+  closeModal();
   sessionStorage.setItem("bscs2c-unlocked", "1");
   unlock();
   showToast("Dashboard ready");
@@ -2455,6 +2486,20 @@ async function handleSetupRestore(e) {
 function bindSetupScreen() {
   $("#setupForm")?.addEventListener("submit", handleSetupSubmit);
   $("#setupRestoreFile")?.addEventListener("change", handleSetupRestore);
+  const sd = $("#setupStartDate");
+  if (sd) {
+    const today = localDateKey(new Date());
+    sd.max = today;
+    if (!sd.value) sd.value = today;
+  }
+  $("#setupTogglePassword")?.addEventListener("click", () => {
+    const p = $("#setupPassword"),
+      c = $("#setupPasswordConfirm"),
+      b = $("#setupTogglePassword");
+    const show = p.type === "password";
+    p.type = c.type = show ? "text" : "password";
+    b.textContent = show ? "Hide" : "Show";
+  });
 }
 async function initializeData() {
   if (dataInitPromise) return dataInitPromise;
@@ -2685,6 +2730,16 @@ document.addEventListener("click", async (e) => {
         "Daily contribution amount must be greater than zero.",
         "error",
       );
+    const startDate = ($("#settingStartDate")?.value || "").trim();
+    if (
+      startDate &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+        startDate > localDateKey(new Date()))
+    )
+      return showToast(
+        "Contribution start date must be a valid date, not in the future.",
+        "error",
+      );
     await saveSetting("className", $("#settingClass").value.trim() || "BSCS2C");
     await saveSetting(
       "departmentName",
@@ -2696,9 +2751,10 @@ document.addEventListener("click", async (e) => {
       $("#settingEvent").value.trim() || "Christmas Party",
     );
     await saveSetting("contributionAmount", amount);
+    await saveSetting("contributionStartDate", startDate);
     await log(
       "Updated settings",
-      "Class, event, or daily contribution amount changed.",
+      "Class, event, daily amount, or start date changed.",
     );
     await refresh();
     applyBranding();

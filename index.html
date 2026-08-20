@@ -34,20 +34,33 @@
   <section id="setupScreen" class="login-screen hidden">
     <div class="login-card glass setup-card">
       <div class="brand-mark">₱</div>
-      <p class="eyebrow">WELCOME</p>
-      <h1 id="setupAppName">Kolekta</h1>
-      <p class="muted">Set up your class treasury on this device.</p>
+      <p class="eyebrow" id="setupAppName">Kolekta</p>
+      <h1>Set Up Your Class Treasury</h1>
+      <p class="muted">Create your treasury on this device.</p>
       <form id="setupForm">
-        <div class="form-field"><label>Section / class name</label><input class="input" id="setupSection" maxlength="40" placeholder="e.g. BSCS2C" required></div>
+        <div class="setup-section-label">Treasury identity</div>
+        <div class="form-field"><label>Class / Organization name</label><input class="input" id="setupSection" maxlength="40" placeholder="e.g. BSCS2C" required></div>
         <div class="form-field" style="margin-top:12px"><label>Department <span class="muted">(optional)</span></label><input class="input" id="setupDepartment" maxlength="80" placeholder="e.g. College of Computer Studies"></div>
         <div class="form-field" style="margin-top:12px"><label>Tagline <span class="muted">(optional)</span></label><input class="input" id="setupTagline" maxlength="80" placeholder="e.g. Offline-first Treasurer Dashboard"></div>
-        <div class="form-field" style="margin-top:12px"><label>Treasurer password</label><input class="input" id="setupPassword" type="password" autocomplete="new-password" placeholder="At least 4 characters" required></div>
+        <div class="form-field" style="margin-top:12px"><label>Event / Fund purpose</label><input class="input" id="setupEvent" maxlength="60" placeholder="e.g. Christmas Party" required></div>
+
+        <div class="setup-section-label">Contribution settings</div>
+        <div class="form-field"><label>Daily contribution amount</label><input class="input" id="setupAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="e.g. 5" required></div>
+        <div class="form-field" style="margin-top:12px"><label>Contribution start date</label><input class="input" id="setupStartDate" type="date" required></div>
+
+        <div class="setup-section-label">Security</div>
+        <div class="form-field"><label>Treasurer password</label><div class="password-wrap setup-pw-wrap"><input class="input" id="setupPassword" type="password" autocomplete="new-password" placeholder="At least 4 characters" required><button type="button" class="password-toggle" id="setupTogglePassword" aria-label="Show password">Show</button></div></div>
         <div class="form-field" style="margin-top:12px"><label>Confirm password</label><input class="input" id="setupPasswordConfirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required></div>
-        <button class="primary-btn full" type="submit">Create dashboard</button>
+
+        <button class="primary-btn full" type="submit">Create Dashboard</button>
       </form>
+      <p class="setup-note muted">Your treasury data is stored locally on this device. Keep regular backups to protect your records.</p>
       <div class="setup-divider"><span>or</span></div>
-      <label class="ghost-btn full file-btn setup-restore-btn">Restore from a backup file<input type="file" id="setupRestoreFile" accept="application/json"></label>
-      <p class="setup-hint muted">Already have a JSON backup? Restore it, then log in with that backup's password.</p>
+      <div class="setup-restore">
+        <strong>Already have a JSON backup?</strong>
+        <span class="muted">Restore an existing treasury and continue using its saved data.</span>
+        <label class="ghost-btn full file-btn setup-restore-btn">Restore from Backup<input type="file" id="setupRestoreFile" accept="application/json"></label>
+      </div>
       <p class="login-note">Developed by <strong>RG Sinson</strong></p>
     </div>
   </section>

@@ -2643,10 +2643,82 @@ button,
   border-radius: 15px;
   padding: 13px 14px;
 }
-.setup-hint {
+.setup-section-label {
   font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9c91ff;
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.setup-section-label:first-child {
+  margin-top: 4px;
+}
+.setup-pw-wrap input {
+  padding-left: 14px;
+}
+.setup-note {
+  font-size: 10.5px;
+  line-height: 1.55;
   text-align: center;
-  margin: 10px 0 0;
+  margin: 14px 0 0;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.setup-restore {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+.setup-restore strong {
+  font-size: 13px;
+}
+.setup-restore .muted {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.setup-confirm {
+  display: grid;
+  gap: 8px;
+}
+.setup-confirm > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.setup-confirm span {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.setup-confirm strong {
+  font-size: 13px;
+  text-align: right;
+}
+.settings-subhead {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9c91ff;
+  margin: 4px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.settings-subhead + .form-field {
+  margin-top: 0;
+}
+.settings-section .settings-subhead:not(:first-of-type) {
+  margin-top: 20px;
 }
 
 /* Quick Record: fixed-height scrolling student list */
