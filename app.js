@@ -438,40 +438,86 @@ function recentTable(rows) {
 function statusLabel(status) {
   return status === "Active" ? "Participating" : "Not participating";
 }
-function renderStudents() {
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentStatusFilter" style="width:160px"><option value="all">All statuses</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
+function genderGroupKey(s) {
+  return s.gender === "Male"
+    ? "Male"
+    : s.gender === "Female"
+      ? "Female"
+      : "Unspecified";
 }
-function studentsTable(filter = "", status = "all") {
-  const rows = state.students
-    .filter(
-      (s) =>
-        s.name.toLowerCase().includes(filter.toLowerCase()) &&
-        (status === "all" || s.status === status),
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-  if (!rows.length) return `<div class="empty">No students found.</div>`;
-  return `<div class="table-wrap scroll-box"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th><th>Actions</th></tr></thead><tbody>${rows
-    .map((s) => {
-      const payments = state.contributions
-        .filter((x) => x.studentId === s.id)
-        .sort((a, b) => new Date(b.at) - new Date(a.at));
-      const ledger = studentLedger(s.id);
-      const todayKey = effectiveTodayKey();
-      const todayDue =
-        isClassDay(todayKey) && todayKey >= classStartKey()
-          ? ledger.due.find((x) => x.date === todayKey)
-          : null;
-      const todayLabel =
-        todayDue?.status === "paid"
-          ? "Paid"
-          : todayDue?.status === "advance"
-            ? "Advance"
-            : todayDue
-              ? "Due"
-              : "No class";
-      return `<tr><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></td><td>${todayLabel === "Paid" ? '<span class="badge paid">Paid</span>' : todayLabel === "Advance" ? '<span class="badge paid">Advance</span>' : todayLabel === "Due" ? '<span class="badge expense">Due</span>' : '<span class="muted">No class</span>'}</td><td>${ledger.outstanding ? `<span class="badge expense">${money(ledger.outstanding)} due</span>` : ledger.advance.length ? `<span class="badge paid">${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead</span>` : '<span class="badge active">₱0 due</span>'}</td><td>${payments[0] ? dateTime(payments[0].at) : "—"}</td><td><div class="actions">${button("History", "small-btn", 'data-payment-history="' + s.id + '"')}${button("Edit", "small-btn", 'data-edit-student="' + s.id + '"')}${button("Delete", "small-btn danger", 'data-delete-student="' + s.id + '"')}</div></td></tr>`;
+function genderGroupLabel(key) {
+  return key === "Male" ? "Boys" : key === "Female" ? "Girls" : "Unspecified";
+}
+function studentComputed(s) {
+  const payments = state.contributions
+    .filter((x) => x.studentId === s.id)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  const ledger = studentLedger(s.id);
+  const todayKey = effectiveTodayKey();
+  const todayDue =
+    isClassDay(todayKey) && todayKey >= classStartKey()
+      ? ledger.due.find((x) => x.date === todayKey)
+      : null;
+  const todayLabel =
+    todayDue?.status === "paid"
+      ? "Paid"
+      : todayDue?.status === "advance"
+        ? "Advance"
+        : todayDue
+          ? "Due"
+          : "No class";
+  const todayHtml =
+    todayLabel === "Paid"
+      ? '<span class="badge paid">Paid</span>'
+      : todayLabel === "Advance"
+        ? '<span class="badge paid">Advance</span>'
+        : todayLabel === "Due"
+          ? '<span class="badge expense">Due</span>'
+          : '<span class="muted">No class</span>';
+  const balanceHtml = ledger.outstanding
+    ? `<span class="badge expense">${money(ledger.outstanding)} due</span>`
+    : ledger.advance.length
+      ? `<span class="badge paid">${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead</span>`
+      : '<span class="badge active">₱0 due</span>';
+  const last = payments[0] ? dateTime(payments[0].at) : "—";
+  return { todayHtml, balanceHtml, last };
+}
+function renderStudents() {
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentGenderFilter" style="width:130px"><option value="all">All genders</option><option value="Male">Boys</option><option value="Female">Girls</option></select> <select class="select" id="studentStatusFilter" style="width:170px"><option value="all">All statuses</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
+}
+function studentsTable(filter = "", status = "all", gender = "all") {
+  const matched = state.students.filter(
+    (s) =>
+      s.name.toLowerCase().includes(filter.toLowerCase()) &&
+      (status === "all" || s.status === status) &&
+      (gender === "all" || genderGroupKey(s) === gender),
+  );
+  if (!matched.length) return `<div class="empty">No students found.</div>`;
+  const order = gender === "all" ? ["Male", "Female", "Unspecified"] : [gender];
+  const blocks = order
+    .map((key) => {
+      const rows = matched
+        .filter((s) => genderGroupKey(s) === key)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      if (!rows.length) return "";
+      const head = `<div class="student-group-head"><strong>${genderGroupLabel(key)}</strong><span class="student-group-count">${rows.length}</span></div>`;
+      const tableRows = rows
+        .map((s) => {
+          const c = studentComputed(s);
+          return `<tr class="student-row" data-student-detail="${s.id}"><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></td><td>${c.todayHtml}</td><td>${c.balanceHtml}</td><td>${c.last}</td></tr>`;
+        })
+        .join("");
+      const table = `<div class="table-wrap students-desktop"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+      const cards = `<div class="students-mobile student-card-list">${rows
+        .map((s) => {
+          const c = studentComputed(s);
+          return `<button type="button" class="student-card" data-student-detail="${s.id}"><div class="student-card-info"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-card-alias">${esc(s.alias)}</span>` : ""}<div class="student-card-meta">${c.todayHtml}${c.balanceHtml}<span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></div></div><span class="student-card-chevron" aria-hidden="true">›</span></button>`;
+        })
+        .join("")}</div>`;
+      return `<div class="student-group">${head}${table}${cards}</div>`;
     })
-    .join("")}</tbody></table></div>`;
+    .join("");
+  return `<div class="student-groups">${blocks}</div>`;
 }
 
 function renderQuickRecord() {
@@ -660,7 +706,7 @@ function howItWorksGuide() {
     [
       `<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.6-5 5.5-5s5.5 2 5.5 5"/><path d="M16.5 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M20.5 20c0-2.4-1.6-4.2-3.8-4.8"/>`,
       "Students",
-      `<p>Your class list. Add classmates and mark each <b>Participating</b> or <b>Not participating</b> — only Participating are counted for dues.</p><p>Open <b>History</b> on any student to see every payment, what's still due, and days paid in advance. Add an <b>identifier</b> when two classmates share a name.</p>`,
+      `<p>Your class list, grouped into <b>Boys</b> and <b>Girls</b> (with an Unspecified group until you set gender). Filter by gender and status, e.g. Girls + Participating.</p><p><b>Tap any student</b> to open their details — balance, today's status, full payment history, and Edit/Delete. Mark each <b>Participating</b> or <b>Not participating</b>; only Participating are counted for dues.</p>`,
     ],
     [
       `<ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/>`,
@@ -732,19 +778,19 @@ function bindViewEvents() {
     updateQuickRecordButtons();
   });
   if ($("#quickStudentList")) updateQuickRecordButtons();
-  $("#studentSearch")?.addEventListener("input", (e) => {
-    $("#studentsTable").innerHTML = studentsTable(
-      e.target.value,
-      $("#studentStatusFilter").value,
-    );
-  });
-  $("#studentStatusFilter")?.addEventListener("change", (e) => {
-    $("#studentsTable").innerHTML = studentsTable(
-      $("#studentSearch").value,
-      e.target.value,
-    );
-  });
-  if ($("#studentsTable")) $("#studentsTable").innerHTML = studentsTable();
+  const refreshStudentsTable = () => {
+    const el = $("#studentsTable");
+    if (el)
+      el.innerHTML = studentsTable(
+        $("#studentSearch")?.value || "",
+        $("#studentStatusFilter")?.value || "all",
+        $("#studentGenderFilter")?.value || "all",
+      );
+  };
+  $("#studentSearch")?.addEventListener("input", refreshStudentsTable);
+  $("#studentStatusFilter")?.addEventListener("change", refreshStudentsTable);
+  $("#studentGenderFilter")?.addEventListener("change", refreshStudentsTable);
+  if ($("#studentsTable")) refreshStudentsTable();
   $("#contributionSearch")?.addEventListener("input", () => {
     refreshContributionTable();
   });
@@ -1047,11 +1093,19 @@ function persistStudentAllocations(studentId) {
 }
 
 async function studentModal(student) {
-  const s = student || { id: "", name: "", alias: "", status: "Active" };
+  const s = student || { id: "", name: "", alias: "", status: "Active", gender: "" };
   modal(
     student ? "Edit Student" : "Add Student",
-    `<form id="studentForm"><div class="form-field"><label>Name</label><input class="input" id="studentName" required maxlength="100" value="${esc(s.name)}" placeholder="e.g. Juan Dela Cruz"></div><div class="form-field" style="margin-top:13px"><label>Another name / identifier <span class="muted">(optional)</span></label><input class="input" id="studentAlias" maxlength="60" value="${esc(s.alias || "")}" placeholder="e.g. Juan 2, J. Dela Cruz, or nickname"><div class="footer-note">Use this when two classmates have the same name. It makes contribution records easier to identify.</div></div><div class="form-field" style="margin-top:13px"><label>Status</label><select class="select" id="studentStatus"><option value="Active" ${s.status === "Active" ? "selected" : ""}>Participating</option><option value="Inactive" ${s.status === "Inactive" ? "selected" : ""}>Not participating</option></select></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save student</button></div></form>`,
+    `<form id="studentForm"><div class="form-field"><label>Name</label><input class="input" id="studentName" required maxlength="100" value="${esc(s.name)}" placeholder="e.g. Juan Dela Cruz"></div><div class="form-field" style="margin-top:13px"><label>Another name / identifier <span class="muted">(optional)</span></label><input class="input" id="studentAlias" maxlength="60" value="${esc(s.alias || "")}" placeholder="e.g. Juan 2, J. Dela Cruz, or nickname"><div class="footer-note">Use this when two classmates have the same name. It makes contribution records easier to identify.</div></div><div class="form-field" style="margin-top:13px"><label>Status</label><select class="select" id="studentStatus"><option value="Active" ${s.status === "Active" ? "selected" : ""}>Participating</option><option value="Inactive" ${s.status === "Inactive" ? "selected" : ""}>Not participating</option></select></div><div class="form-field" style="margin-top:13px"><label>Gender <span class="muted">(optional)</span></label><div class="seg-group" id="studentGenderGroup"><button type="button" class="seg-btn${!s.gender ? " active" : ""}" data-gender="">Not set</button><button type="button" class="seg-btn${s.gender === "Male" ? " active" : ""}" data-gender="Male">Male</button><button type="button" class="seg-btn${s.gender === "Female" ? " active" : ""}" data-gender="Female">Female</button></div><input type="hidden" id="studentGender" value="${esc(s.gender || "")}"><div class="footer-note">For grouping and filtering only — it does not affect any calculations.</div></div><div class="modal-actions"><button type="button" class="ghost-btn" data-close-modal>Cancel</button><button class="primary-btn">Save student</button></div></form>`,
   );
+  $$("#studentGenderGroup .seg-btn").forEach((b) => {
+    b.onclick = () => {
+      $("#studentGender").value = b.dataset.gender;
+      $$("#studentGenderGroup .seg-btn").forEach((x) =>
+        x.classList.toggle("active", x === b),
+      );
+    };
+  });
   $("#studentForm").onsubmit = async (e) => {
     e.preventDefault();
     const name = $("#studentName").value.trim(),
@@ -1062,6 +1116,7 @@ async function studentModal(student) {
       name,
       alias,
       status: $("#studentStatus").value,
+      gender: $("#studentGender").value || "",
       createdAt: s.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1371,7 +1426,7 @@ function paymentHistoryModal(studentId) {
   const body = `
     <div class="history-profile-head">
       <div class="history-avatar">${esc((s.name || "?").trim().charAt(0).toUpperCase())}</div>
-      <div><strong>${esc(displayStudent(s))}</strong><span>${s.status === "Active" ? "Participating student" : "Not participating"}</span></div>
+      <div><strong>${esc(displayStudent(s))}</strong><span>${s.status === "Active" ? "Participating student" : "Not participating"}${s.gender ? ` · ${esc(s.gender)}` : ""}</span></div>
     </div>
     <div class="history-status-card"><div><span class="muted">Current balance</span><strong class="status-value ${statusClass}">${balanceText}</strong></div><div class="today-status"><span class="muted">Today</span><strong>${todayStatus}</strong></div></div>
     <div class="history-metrics"><div><span>Total received</span><strong>${money(total)}</strong></div><div><span>Payments</span><strong>${payments.length}</strong></div><div><span>Daily contribution</span><strong>${money(ledger.daily)}</strong></div></div>
@@ -1379,9 +1434,9 @@ function paymentHistoryModal(studentId) {
     <div class="payment-history-list redesigned-history-list">${paymentCards}</div>
     <div class="history-ledger-stack">${unpaidSection}${advanceSection}</div>`;
   modal(
-    "Payment History",
+    "Student details",
     body,
-    `<div class="modal-actions">${s.status === "Active" ? button("+ Record Payment", "primary-btn", 'data-record-student="' + s.id + '"') : ""}<button class="ghost-btn" data-close-modal>Close</button></div>`,
+    `<div class="modal-actions">${s.status === "Active" ? button("+ Record Payment", "primary-btn", 'data-record-student="' + s.id + '"') : ""}${button("Edit", "ghost-btn", 'data-edit-student="' + s.id + '"')}${button("Delete", "danger-btn", 'data-delete-student="' + s.id + '"')}<button class="ghost-btn" data-close-modal>Close</button></div>`,
   );
 }
 
@@ -2398,6 +2453,7 @@ document.addEventListener("click", async (e) => {
       action ||
       e.target.closest("[data-quick-record]") ||
       e.target.closest("[data-payment-history]") ||
+      e.target.closest("[data-student-detail]") ||
       e.target.closest("[data-edit-student]") ||
       e.target.closest("[data-delete-student]") ||
       e.target.closest("[data-record-student]") ||
@@ -2527,6 +2583,8 @@ document.addEventListener("click", async (e) => {
     render();
     return showToast("Settings saved");
   }
+  const sd = e.target.closest("[data-student-detail]");
+  if (sd) return paymentHistoryModal(sd.dataset.studentDetail);
   const ph = e.target.closest("[data-payment-history]");
   if (ph) return paymentHistoryModal(ph.dataset.paymentHistory);
   const qr = e.target.closest("[data-quick-record]");

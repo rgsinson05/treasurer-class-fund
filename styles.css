@@ -2785,3 +2785,124 @@ button,
     white-space: normal;
   }
 }
+
+/* Students: gender groups, responsive table/cards, detail cards */
+.student-groups {
+  display: grid;
+  gap: 16px;
+}
+.student-group-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+}
+.student-group-head strong {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.student-group-count {
+  min-width: 22px;
+  text-align: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(139, 124, 255, 0.16);
+  color: #c4bdff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.student-row {
+  cursor: pointer;
+}
+.student-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+.students-mobile {
+  display: none;
+}
+.student-card-list {
+  display: grid;
+  gap: 8px;
+}
+.student-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+}
+.student-card:hover {
+  border-color: rgba(139, 124, 255, 0.25);
+  background: rgba(255, 255, 255, 0.045);
+}
+.student-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.student-card-info > strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.student-card-alias {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: -2px;
+}
+.student-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.student-card-chevron {
+  color: #8b7cff;
+  font-size: 20px;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+@media (max-width: 760px) {
+  .students-desktop {
+    display: none;
+  }
+  .students-mobile {
+    display: grid;
+  }
+}
+
+/* Segmented control (student gender) */
+.seg-group {
+  display: flex;
+  gap: 6px;
+}
+.seg-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: rgba(4, 8, 18, 0.4);
+  color: #aeb8cf;
+  font-size: 12px;
+  font-weight: 800;
+}
+.seg-btn:hover {
+  border-color: rgba(139, 124, 255, 0.3);
+  color: #fff;
+}
+.seg-btn.active {
+  background: linear-gradient(
+    90deg,
+    rgba(139, 124, 255, 0.22),
+    rgba(139, 124, 255, 0.08)
+  );
+  border-color: rgba(139, 124, 255, 0.4);
+  color: #fff;
+}

@@ -1,4 +1,4 @@
-const CACHE = 'bscs2c-treasurer-v28-guide';
+const CACHE = 'bscs2c-treasurer-v29-students-gender';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
