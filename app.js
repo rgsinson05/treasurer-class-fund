@@ -430,12 +430,16 @@ function stat(label, value, sub, icon) {
 }
 function recentTable(rows) {
   if (!rows.length) return `<div class="empty">No transactions yet.</div>`;
-  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Type</th><th>Details</th><th>Amount</th><th>Date</th></tr></thead><tbody>${rows
+  return `<div class="recent-list">${rows
     .map((x) => {
+      const isExp = x.kind === "Expense";
       const student = state.students.find((s) => s.id === x.studentId);
-      return `<tr><td><span class="badge ${x.kind === "Expense" ? "expense" : "paid"}">${x.kind}</span></td><td>${x.kind === "Expense" ? esc(x.description) : esc(student?.name || "Unknown student")}</td><td>${money(x.amount)}</td><td>${dateTime(x.at || x.date)}</td></tr>`;
+      const label = isExp
+        ? esc(x.description || x.category || "Expense")
+        : esc(student?.name || "Unknown student");
+      return `<div class="recent-item"><span class="recent-type ${isExp ? "expense" : "paid"}">${isExp ? "Expense" : "Contribution"}</span><div class="recent-info"><strong>${label}</strong><span>${dateTime(x.at || x.date)}</span></div><b class="recent-amount ${isExp ? "warn-text" : "good-text"}">${isExp ? "−" : "+"}${money(x.amount)}</b></div>`;
     })
-    .join("")}</tbody></table></div>`;
+    .join("")}</div>`;
 }
 
 function statusLabel(status) {
