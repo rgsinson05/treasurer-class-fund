@@ -627,6 +627,52 @@ function expenseTable(q = "", date = "") {
   return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${dateOnly(x.date)}</td><td><span class="badge expense">${esc(x.category)}</span></td><td>${esc(x.description)}</td><td><strong>${money(x.amount)}</strong></td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-expense="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-expense="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div>`;
 }
 
+const REP_IC = {
+  briefcase: `<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7"/><path d="M3 12h18"/>`,
+  users: `<circle cx="9" cy="8" r="3.1"/><path d="M3.6 20c0-3 2.6-5 5.4-5s5.4 2 5.4 5"/><path d="M16.6 5.3a3.1 3.1 0 0 1 0 6"/><path d="M20.5 20c0-2.3-1.5-4.1-3.6-4.7"/>`,
+  usersCheck: `<circle cx="9" cy="8" r="3.1"/><path d="M3.6 20c0-3 2.6-5 5.4-5s5.4 2 5.4 5"/><path d="M15 11.6l1.8 1.8 3.7-3.8"/>`,
+  cash: `<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/>`,
+  receipt: `<path d="M6 2.5h12v19l-3-1.7-3 1.7-3-1.7-3 1.7z"/><path d="M9 7.5h6M9 11.5h6M9 15.5h4"/>`,
+  balance: `<path d="M12 3v18"/><path d="M5 7h14"/><path d="M7 7l-3 6.5a3 3 0 0 0 6 0z"/><path d="M17 7l-3 6.5a3 3 0 0 0 6 0z"/>`,
+  coins: `<ellipse cx="8.5" cy="6.5" rx="5.5" ry="2.5"/><path d="M3 6.5v4c0 1.4 2.5 2.5 5.5 2.5"/><ellipse cx="15.5" cy="13" rx="5.5" ry="2.5"/><path d="M10 13v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-4"/>`,
+  chart: `<path d="M4 4v16h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>`,
+  check: `<circle cx="12" cy="12" r="9"/><path d="M8.3 12.3l2.4 2.4 4.8-5.2"/>`,
+  partial: `<circle cx="12" cy="12" r="9"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>`,
+  alert: `<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.2"/><path d="M12 16.3h.01"/>`,
+  clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7.2V12l3.2 2"/>`,
+  download: `<path d="M12 3v11"/><path d="M7.5 10 12 14.5 16.5 10"/><path d="M5 20h14"/>`,
+};
+function reportsIcon(paths) {
+  return `<span class="rep-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></span>`;
+}
+function collectionOverview() {
+  const daily = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
+  const active = state.students.filter((s) => s.status === "Active");
+  let expected = 0,
+    remaining = 0;
+  const counts = { paid: 0, partial: 0, unpaid: 0, advance: 0 };
+  for (const s of active) {
+    const l = studentLedger(s.id);
+    expected += l.due.length * daily;
+    remaining += l.outstanding;
+    if (l.outstanding > 0) {
+      if (l.paid.length > 0) counts.partial++;
+      else counts.unpaid++;
+    } else if (l.advance.length > 0) {
+      counts.advance++;
+    } else {
+      counts.paid++;
+    }
+  }
+  const collected = Math.max(0, expected - remaining);
+  const pct =
+    expected > 0
+      ? Math.min(100, (collected / expected) * 100)
+      : active.length
+        ? 100
+        : 0;
+  return { active: active.length, expected, collected, remaining, pct, counts };
+}
 function renderReports() {
   const collected = state.contributions.reduce(
       (a, x) => a + Number(x.amount),
@@ -634,23 +680,85 @@ function renderReports() {
     ),
     spent = state.expenses.reduce((a, x) => a + Number(x.amount), 0),
     balance = collected - spent,
-    paid = new Set(state.contributions.map((x) => x.studentId)).size;
-  return `<div class="view"><section class="report-box glass"><p class="eyebrow">TREASURY SUMMARY</p><h3>${esc(state.settings.className)} — ${esc(state.settings.eventName)}</h3>${state.settings.departmentName ? `<p class="muted" style="margin:2px 0 0">${esc(state.settings.departmentName)}</p>` : ""}<div class="report-grid"><div><span class="muted">Students</span><div class="report-number">${state.students.length}</div></div><div><span class="muted">Contributors</span><div class="report-number">${paid}</div></div><div><span class="muted">Collected</span><div class="report-number">${money(collected)}</div></div><div><span class="muted">Expenses</span><div class="report-number">${money(spent)}</div></div><div><span class="muted">Balance</span><div class="report-number">${money(balance)}</div></div><div><span class="muted">Contribution</span><div class="report-number">${money(state.settings.contributionAmount)}</div></div></div><div class="search-row">${button("Export JSON Backup", "primary-btn", 'data-action="export-json"')}${button("Export Transactions CSV", "ghost-btn", 'data-action="export-csv"')}${button("Print Report", "ghost-btn", 'data-action="print-report"')}</div></section><section class="panel glass"><div class="panel-header"><h3>Expense breakdown</h3></div>${expenseBreakdown()}</section></div>`;
+    contributors = new Set(state.contributions.map((x) => x.studentId)).size;
+  const ov = collectionOverview();
+  return `<div class="view reports-view">
+    <section class="report-box glass">
+      <div class="report-head">${reportsIcon(REP_IC.briefcase)}<div><p class="eyebrow">TREASURY SUMMARY</p><h3>${esc(state.settings.className)} — ${esc(state.settings.eventName)}</h3>${state.settings.departmentName ? `<p class="muted" style="margin:2px 0 0">${esc(state.settings.departmentName)}</p>` : ""}</div></div>
+      <div class="report-hero">
+        <div class="report-hero-card collected">${reportsIcon(REP_IC.cash)}<span>Collected</span><strong>${money(collected)}</strong></div>
+        <div class="report-hero-card spent">${reportsIcon(REP_IC.receipt)}<span>Expenses</span><strong>${money(spent)}</strong></div>
+        <div class="report-hero-card balance">${reportsIcon(REP_IC.balance)}<span>Balance</span><strong>${money(balance)}</strong></div>
+      </div>
+      <div class="report-meta-grid">
+        <div>${reportsIcon(REP_IC.users)}<div><span>Students</span><b>${state.students.length}</b></div></div>
+        <div>${reportsIcon(REP_IC.usersCheck)}<div><span>Contributors</span><b>${contributors}</b></div></div>
+        <div>${reportsIcon(REP_IC.coins)}<div><span>Daily amount</span><b>${money(state.settings.contributionAmount)}</b></div></div>
+        <div>${reportsIcon(REP_IC.alert)}<div><span>Unpaid dues</span><b class="${ov.remaining ? "warn-text" : "good-text"}">${money(ov.remaining)}</b></div></div>
+      </div>
+    </section>
+
+    <section class="panel glass report-section">
+      <div class="panel-header with-ic">${reportsIcon(REP_IC.chart)}<div><h3>Collection Overview</h3><span class="muted">Dues expected so far vs collected</span></div><span class="badge ${ov.remaining ? "expense" : "paid"}">${Math.round(ov.pct)}%</span></div>
+      <div class="collection-overview-grid">
+        <div><span>Expected</span><strong>${money(ov.expected)}</strong></div>
+        <div><span>Collected</span><strong class="good-text">${money(ov.collected)}</strong></div>
+        <div><span>Remaining</span><strong class="${ov.remaining ? "warn-text" : "good-text"}">${money(ov.remaining)}</strong></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${ov.pct}%"></div></div><div class="progress-meta"><span>${Math.round(ov.pct)}% collected</span><span>${money(ov.collected)} of ${money(ov.expected)}</span></div></div>
+    </section>
+
+    <section class="panel glass report-section">
+      <div class="panel-header with-ic">${reportsIcon(REP_IC.users)}<div><h3>Student Contribution Status</h3><span class="muted">${ov.active} participating</span></div></div>
+      <div class="status-overview-grid">
+        <div class="status-tile paid">${reportsIcon(REP_IC.check)}<b>${ov.counts.paid}</b><span>Paid</span></div>
+        <div class="status-tile partial">${reportsIcon(REP_IC.partial)}<b>${ov.counts.partial}</b><span>Partially paid</span></div>
+        <div class="status-tile unpaid">${reportsIcon(REP_IC.alert)}<b>${ov.counts.unpaid}</b><span>Unpaid</span></div>
+        <div class="status-tile advance">${reportsIcon(REP_IC.clock)}<b>${ov.counts.advance}</b><span>Paid in advance</span></div>
+      </div>
+    </section>
+
+    <section class="panel glass report-section">
+      <div class="panel-header with-ic">${reportsIcon(REP_IC.receipt)}<div><h3>Expense Breakdown</h3><span class="muted">${state.expenses.length} expense${state.expenses.length === 1 ? "" : "s"}</span></div><span class="report-total">${money(spent)}</span></div>
+      ${reportExpenses()}
+    </section>
+
+    <section class="panel glass export-panel">
+      <div class="panel-header with-ic">${reportsIcon(REP_IC.download)}<div><h3>Export & Print</h3><span class="muted">Save or share this report</span></div></div>
+      <div class="export-actions">${button("Export JSON Backup", "primary-btn", 'data-action="export-json"')}${button("Export Transactions CSV", "ghost-btn", 'data-action="export-csv"')}${button("Print Report", "ghost-btn", 'data-action="print-report"')}</div>
+      <p class="footer-note">Data is stored on this device only — keep a JSON backup somewhere safe.</p>
+    </section>
+  </div>`;
 }
-function expenseBreakdown() {
+function reportExpenses() {
+  if (!state.expenses.length)
+    return `<div class="empty">No expenses recorded yet. Add expenses and they'll appear here with categories, dates, and a running total.</div>`;
   const map = {};
   state.expenses.forEach(
     (x) => (map[x.category] = (map[x.category] || 0) + Number(x.amount)),
   );
-  const rows = Object.entries(map).sort((a, b) => b[1] - a[1]);
-  if (!rows.length) return `<div class="empty">No expenses yet.</div>`;
-  const max = Math.max(...rows.map((x) => x[1]));
-  return rows
+  const cats = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...cats.map((x) => x[1]));
+  const bars = cats
     .map(
       ([cat, val]) =>
         `<div class="progress-wrap"><div class="progress-meta"><span>${esc(cat)}</span><strong>${money(val)}</strong></div><div class="progress-track"><div class="progress-bar" style="width:${(val / max) * 100}%"></div></div></div>`,
     )
     .join("");
+  const recent = [...state.expenses]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 6);
+  const list = recent
+    .map(
+      (x) =>
+        `<div class="report-expense-row"><div class="report-expense-info"><strong>${esc(x.category)}</strong><span>${esc(x.description || "—")} · ${dateOnly(x.date)}</span></div><b>${money(x.amount)}</b></div>`,
+    )
+    .join("");
+  const more =
+    state.expenses.length > recent.length
+      ? `<div class="report-expense-more muted">+${state.expenses.length - recent.length} more in Expenses</div>`
+      : "";
+  return `<div class="report-expense-bars">${bars}</div><div class="report-expense-list">${list}${more}</div>`;
 }
 
 function renderRecycle() {
