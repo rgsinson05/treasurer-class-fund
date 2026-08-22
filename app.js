@@ -2858,6 +2858,9 @@ document.addEventListener("click", async (e) => {
   if (action === "set-quick-mode") {
     const mode = e.target.closest("[data-mode]")?.dataset.mode;
     bulkRecordMode = mode === "bulk";
+    if (bulkRecordMode) {
+      bulkRecordAmount = String(Math.max(0.01, Number(state.settings.contributionAmount) || 5));
+    }
     if (!bulkRecordMode) {
       bulkRecordSelected = [];
       bulkRecordAmount = "";
