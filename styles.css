@@ -1610,6 +1610,162 @@ button,
   }
 }
 
+/* Bulk Record styles */
+.quick-mode-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 11px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease, transform 0.22s ease;
+}
+.mode-btn:hover {
+  color: var(--text);
+}
+.mode-btn.active {
+  background: rgba(139, 124, 255, 0.18);
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(139, 124, 255, 0.12);
+}
+.bulk-record-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bulk-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bulk-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8793ad;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bulk-date-input {
+  width: 100%;
+  max-width: 260px;
+}
+.bulk-date-display {
+  font-size: 12px;
+  color: var(--accent2);
+  font-weight: 700;
+}
+.bulk-actions-row {
+  display: flex;
+  gap: 8px;
+}
+.bulk-student-list {
+  display: grid;
+  gap: 6px;
+  max-height: 38vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.bulk-student-list::-webkit-scrollbar {
+  width: 4px;
+}
+.bulk-student-list::-webkit-scrollbar-thumb {
+  background: rgba(139, 124, 255, 0.25);
+  border-radius: 4px;
+}
+.bulk-student-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(7, 12, 25, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+.bulk-student-row:hover {
+  border-color: rgba(139, 124, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-1px);
+}
+.bulk-student-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex: 0 0 16px;
+}
+.bulk-student-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bulk-student-info strong {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bulk-student-info span {
+  font-size: 10px;
+  color: #69758f;
+}
+.bulk-selected-count {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  padding: 4px 0;
+}
+.bulk-amount-input {
+  width: 100%;
+  max-width: 260px;
+}
+.bulk-total-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(85, 214, 190, 0.06);
+  border: 1px solid rgba(85, 214, 190, 0.12);
+}
+.bulk-total-box span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.bulk-total-box strong {
+  font-size: 20px;
+  color: var(--accent2);
+  font-weight: 900;
+}
+.bulk-actions {
+  display: flex;
+  gap: 8px;
+}
+.bulk-actions .primary-btn {
+  flex: 1;
+}
+.bulk-actions .primary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
 .nav-icon {
   width: 17px;
   height: 17px;

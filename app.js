@@ -21,6 +21,10 @@ let quickSessionTotal = 0;
 let quickSessionCount = 0;
 let quickOverrideOn = false;
 let quickOverrideValue = "";
+let bulkRecordMode = false;
+let bulkRecordDate = "";
+let bulkRecordAmount = "";
+let bulkRecordSelected = [];
 const ACTIVITY_RECENT_LIMIT = 20;
 let state = {
   students: [],
@@ -530,7 +534,31 @@ function studentsTable(filter = "", status = "all", gender = "all") {
 
 function renderQuickRecord() {
   const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
-  return `<div class="view"><section class="panel glass quick-record-panel"><div class="panel-header"><div><h3>Quick Record</h3><span class="muted">Record one or more ${money(fixed)} class-day contributions in a single payment.</span></div><span class="badge paid">${money(fixed)} / class day</span></div><div class="quick-session-total"><div><span class="muted">Collected this round</span><strong>${money(quickSessionTotal)}</strong></div><span class="muted">${quickSessionCount} payment${quickSessionCount === 1 ? "" : "s"}</span>${quickSessionCount > 0 ? button("Reset", "ghost-btn small-btn", 'data-action="reset-quick-session"') : ""}</div><div class="quick-record-controls"><div class="quick-amount-box"><span class="muted">Default payment</span><strong>${money(fixed)}</strong></div><label class="override-toggle"><input type="checkbox" id="quickOverrideToggle" ${quickOverrideOn ? "checked" : ""}> <span>Override amount</span></label><input class="input quick-override-input" id="quickOverrideAmount" type="number" min="${fixed}" step="0.01" inputmode="decimal" placeholder="e.g. ${fixed * 2}" value="${quickOverrideOn ? esc(String(quickOverrideValue)) : ""}" ${quickOverrideOn ? "" : "disabled"}></div><div class="search-row quick-search-row"><input class="input search-input" id="quickRecordSearch" placeholder="Search student name or identifier..." autocomplete="off"></div><div class="quick-student-list quick-student-scroll" id="quickStudentList">${quickStudentList("")}</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div></section></div>`;
+  const todayLabel = bulkRecordDate || effectiveTodayKey();
+  const todayDateStr = todayLabel ? dateOnly(dateFromKey(todayLabel)) : "Today";
+  const activeStudents = state.students.filter(s => s.status === "Active").sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)));
+  return `<div class="view"><section class="panel glass quick-record-panel"><div class="panel-header"><div><h3>Quick Record</h3><span class="muted">${bulkRecordMode ? "Record the same payment amount for multiple students at once." : "Record one or more ${money(fixed)} class-day contributions in a single payment."}</span></div><span class="badge paid">${money(fixed)} / class day</span></div><div class="quick-session-total"><div><span class="muted">Collected this round</span><strong>${money(quickSessionTotal)}</strong></div><span class="muted">${quickSessionCount} payment${quickSessionCount === 1 ? "" : "s"}</span>${quickSessionCount > 0 ? button("Reset", "ghost-btn small-btn", 'data-action="reset-quick-session"') : ""}</div><div class="quick-mode-toggle"><button class="mode-btn ${bulkRecordMode ? "" : "active"}" data-action="set-quick-mode" data-mode="individual">Individual</button><button class="mode-btn ${bulkRecordMode ? "active" : ""}" data-action="set-quick-mode" data-mode="bulk">Bulk Record</button></div>${bulkRecordMode ? renderBulkRecordPanel(fixed, todayDateStr, activeStudents) : renderIndividualPanel(fixed)}</section></div>`;
+}
+function renderIndividualPanel(fixed) {
+  return `<div class="quick-record-controls"><div class="quick-amount-box"><span class="muted">Default payment</span><strong>${money(fixed)}</strong></div><label class="override-toggle"><input type="checkbox" id="quickOverrideToggle" ${quickOverrideOn ? "checked" : ""}> <span>Override amount</span></label><input class="input quick-override-input" id="quickOverrideAmount" type="number" min="${fixed}" step="0.01" inputmode="decimal" placeholder="e.g. ${fixed * 2}" value="${quickOverrideOn ? esc(String(quickOverrideValue)) : ""}" ${quickOverrideOn ? "" : "disabled"}></div><div class="search-row quick-search-row"><input class="input search-input" id="quickRecordSearch" placeholder="Search student name or identifier..." autocomplete="off"></div><div class="quick-student-list quick-student-scroll" id="quickStudentList">${quickStudentList("")}</div><div class="footer-note">Each class day is exactly ${money(fixed)}. Weekends and dates marked as no-class are skipped. A larger payment automatically settles oldest unpaid days first, then covers future class days.</div>`;
+}
+function renderBulkRecordPanel(fixed, todayDateStr, activeStudents) {
+  const amountVal = bulkRecordAmount || String(fixed);
+  const amountNum = Number(amountVal) || 0;
+  const checkedIds = new Set(bulkRecordSelected || []);
+  const selectedCount = checkedIds.size;
+  const total = amountNum * selectedCount;
+  const rows = activeStudents.map(s => {
+    const ledger = studentLedger(s.id);
+    const today = effectiveTodayKey();
+    const todayDue = ledger.due.find(x => x.date === today);
+    const status = todayDue?.status === "paid" ? "Paid today" : todayDue?.status === "advance" ? "Paid in advance" : todayDue ? "Due today" : "No class today";
+    const balance = ledger.outstanding ? `${money(ledger.outstanding)} due` : ledger.advance.length ? `${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead` : "Up to date";
+    const checked = checkedIds.has(s.id) ? "checked" : "";
+    return `<label class="bulk-student-row"><input type="checkbox" class="bulk-student-check" data-student-id="${s.id}" ${checked}><div class="bulk-student-info"><strong>${esc(displayStudent(s))}</strong><span>${status} · ${balance}</span></div></label>`;
+  }).join("");
+  const dateInputVal = bulkRecordDate || "";
+  return `<div class="bulk-record-panel"><div class="bulk-section"><div class="bulk-section-label">Payment Date</div><input class="input bulk-date-input" id="bulkDateInput" type="date" value="${esc(dateInputVal)}" max="${localDateKey(new Date())}"><div class="bulk-date-display">${esc(todayDateStr)}</div></div><div class="bulk-section"><div class="bulk-section-label">Select Students</div><div class="bulk-actions-row"><button class="small-btn" data-action="bulk-select-all">Select All</button><button class="small-btn" data-action="bulk-clear-all">Clear All</button></div><div class="search-row"><input class="input search-input" id="bulkSearchInput" placeholder="Search student name..." autocomplete="off"></div><div class="bulk-student-list" id="bulkStudentList">${rows || '<div class="empty">No active students.</div>'}</div><div class="bulk-selected-count">${selectedCount} student${selectedCount !== 1 ? "s" : ""} selected</div></div><div class="bulk-section"><div class="bulk-section-label">Amount per student</div><input class="input bulk-amount-input" id="bulkAmountInput" type="number" min="0.01" step="0.01" inputmode="decimal" value="${esc(amountVal)}"></div><div class="bulk-total-box"><span class="muted">Total</span><strong id="bulkTotalDisplay">${money(total)}</strong></div><div class="bulk-actions"><button class="ghost-btn" data-action="set-quick-mode" data-mode="individual">Cancel</button><button class="primary-btn" id="bulkRecordBtn" data-action="bulk-confirm" ${selectedCount === 0 || amountNum <= 0 ? "disabled" : ""}>Record ${selectedCount} Payment${selectedCount !== 1 ? "s" : ""}</button></div></div></div>`;
 }
 function quickStudentList(q = "") {
   const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
@@ -901,6 +929,28 @@ function bindViewEvents() {
     updateQuickRecordButtons();
   });
   if ($("#quickStudentList")) updateQuickRecordButtons();
+  if (bulkRecordMode) {
+    const bulkDate = $("#bulkDateInput");
+    if (bulkDate) {
+      bulkDate.addEventListener("change", (e) => {
+        bulkRecordDate = e.target.value;
+        renderBulkUpdate();
+      });
+    }
+    const bulkAmount = $("#bulkAmountInput");
+    if (bulkAmount) {
+      bulkAmount.addEventListener("input", (e) => {
+        bulkRecordAmount = e.target.value;
+        renderBulkUpdate();
+      });
+    }
+    const bulkSearch = $("#bulkSearchInput");
+    if (bulkSearch) {
+      bulkSearch.addEventListener("input", (e) => {
+        renderBulkUpdate(e.target.value);
+      });
+    }
+  }
   const refreshStudentsTable = () => {
     const el = $("#studentsTable");
     if (el)
@@ -1835,6 +1885,126 @@ function updateQuickRecordButtons() {
     btn.textContent = `Record ${Number.isFinite(value) && value > 0 ? money(value) : money(fixed)}`;
   });
 }
+function renderBulkUpdate(searchQ = undefined) {
+  const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
+  const todayLabel = bulkRecordDate || effectiveTodayKey();
+  const todayDateStr = todayLabel ? dateOnly(dateFromKey(todayLabel)) : "Today";
+  let activeStudents = state.students.filter(s => s.status === "Active").sort((a, b) => displayStudent(a).localeCompare(displayStudent(b)));
+  if (searchQ !== undefined) {
+    activeStudents = activeStudents.filter(s => displayStudent(s).toLowerCase().includes(searchQ.toLowerCase()));
+  }
+  const list = $("#bulkStudentList");
+  if (list) {
+    const checkedIds = new Set(bulkRecordSelected || []);
+    const rows = activeStudents.map(s => {
+      const ledger = studentLedger(s.id);
+      const today = effectiveTodayKey();
+      const todayDue = ledger.due.find(x => x.date === today);
+      const status = todayDue?.status === "paid" ? "Paid today" : todayDue?.status === "advance" ? "Paid in advance" : todayDue ? "Due today" : "No class today";
+      const balance = ledger.outstanding ? `${money(ledger.outstanding)} due` : ledger.advance.length ? `${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead` : "Up to date";
+      const checked = checkedIds.has(s.id) ? "checked" : "";
+      return `<label class="bulk-student-row"><input type="checkbox" class="bulk-student-check" data-student-id="${s.id}" ${checked}><div class="bulk-student-info"><strong>${esc(displayStudent(s))}</strong><span>${status} · ${balance}</span></div></label>`;
+    }).join("") || '<div class="empty">No active students.</div>';
+    list.innerHTML = rows;
+    document.querySelectorAll(".bulk-student-check").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        const id = e.target.dataset.studentId;
+        if (e.target.checked) {
+          if (!bulkRecordSelected.includes(id)) bulkRecordSelected.push(id);
+        } else {
+          bulkRecordSelected = bulkRecordSelected.filter((x) => x !== id);
+        }
+        renderBulkUpdate(searchQ);
+      });
+    });
+  }
+  const countEl = document.querySelector(".bulk-selected-count");
+  if (countEl) {
+    const cnt = bulkRecordSelected.length;
+    countEl.textContent = `${cnt} student${cnt !== 1 ? "s" : ""} selected`;
+  }
+  const totalEl = $("#bulkTotalDisplay");
+  if (totalEl) {
+    const amt = Number(bulkRecordAmount) || 0;
+    totalEl.textContent = money(amt * (bulkRecordSelected.length));
+  }
+  const btn = $("#bulkRecordBtn");
+  if (btn) {
+    const amt = Number(bulkRecordAmount) || 0;
+    btn.disabled = bulkRecordSelected.length === 0 || amt <= 0;
+    btn.textContent = `Record ${bulkRecordSelected.length} Payment${bulkRecordSelected.length !== 1 ? "s" : ""}`;
+  }
+  const dateDisplay = document.querySelector(".bulk-date-display");
+  if (dateDisplay) dateDisplay.textContent = todayDateStr;
+}
+async function bulkRecordPayments() {
+  const fixed = Math.max(0.01, Number(state.settings.contributionAmount) || 5);
+  const amount = Number(bulkRecordAmount) || fixed;
+  if (!Number.isFinite(amount) || amount <= 0)
+    return showToast("Enter a valid payment amount.", "error");
+  if (amount < fixed || Math.abs(amount / fixed - Math.round(amount / fixed)) > 1e-9)
+    return showToast(`Amount must be ${money(fixed)} or a multiple of it.`, "error");
+  if (bulkRecordSelected.length === 0)
+    return showToast("Select at least one student.", "error");
+  const paymentDateKey = bulkRecordDate || effectiveTodayKey();
+  const paymentAt = dateFromKey(paymentDateKey).toISOString();
+  const total = amount * bulkRecordSelected.length;
+  confirmAction(
+    `Record ${bulkRecordSelected.length} payment${bulkRecordSelected.length !== 1 ? "s" : ""}?`,
+    `${money(amount)} × ${bulkRecordSelected.length} students\nTotal: ${money(total)}`,
+    async () => {
+      closeModal();
+      let recorded = 0;
+      let lastId = "";
+      let lastAmt = 0;
+      const activeSession = getCollectionSession(paymentDateKey);
+      for (const studentId of bulkRecordSelected) {
+        const s = state.students.find((x) => x.id === studentId);
+        if (!s) continue;
+        const allocations = autoAllocateAsOf(studentId, amount, paymentAt);
+        const sessionId = activeSession && activeSession.status === "open" ? activeSession.id : "";
+        const obj = {
+          id: uid("pay"),
+          studentId,
+          amount,
+          at: paymentAt,
+          recordedAt: new Date().toISOString(),
+          by: ADMIN,
+          event: state.settings.eventName,
+          allocations,
+          unallocatedAmount: 0,
+          sessionId,
+        };
+        await put("contributions", obj);
+        if (sessionId && activeSession && !activeSession.paymentIds.includes(obj.id)) {
+          activeSession.paymentIds.push(obj.id);
+        }
+        recorded++;
+        lastId = obj.id;
+        lastAmt = amount;
+      }
+      if (activeSession && activeSession.status === "open") {
+        await persistCollectionSessions();
+      }
+      await refresh();
+      await log(
+        "Bulk recorded contributions",
+        `${bulkRecordSelected.length} payment${bulkRecordSelected.length !== 1 ? "s" : ""} — ${money(total)} total (${money(amount)} each)`,
+      );
+      quickSessionTotal += total;
+      quickSessionCount += recorded;
+      vibrate();
+      bulkRecordSelected = [];
+      bulkRecordAmount = "";
+      render();
+      showActionToast(
+        `${recorded} payment${recorded !== 1 ? "s" : ""} recorded — ${money(total)} total.`,
+        "Undo",
+        () => undoQuickRecordPayment(lastId, lastAmt),
+      );
+    },
+  );
+}
 function toLocalInput(iso) {
   const d = new Date(iso);
   const p = (n) => String(n).padStart(2, "0");
@@ -2683,6 +2853,30 @@ document.addEventListener("click", async (e) => {
     quickSessionCount = 0;
     render();
     return showToast("Counter reset");
+  }
+  if (action === "set-quick-mode") {
+    const mode = e.target.closest("[data-mode]")?.dataset.mode;
+    bulkRecordMode = mode === "bulk";
+    if (!bulkRecordMode) {
+      bulkRecordSelected = [];
+      bulkRecordAmount = "";
+      bulkRecordDate = "";
+    }
+    return render();
+  }
+  if (action === "bulk-select-all") {
+    const activeIds = state.students.filter(s => s.status === "Active").map(s => s.id);
+    bulkRecordSelected = [...activeIds];
+    renderBulkUpdate(document.getElementById("bulkSearchInput")?.value);
+    return;
+  }
+  if (action === "bulk-clear-all") {
+    bulkRecordSelected = [];
+    renderBulkUpdate(document.getElementById("bulkSearchInput")?.value);
+    return;
+  }
+  if (action === "bulk-confirm") {
+    return bulkRecordPayments();
   }
   if (action === "close-session") return closeCollectionSession();
   if (action === "attach-all-session") {
