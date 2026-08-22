@@ -950,6 +950,7 @@ function bindViewEvents() {
         renderBulkUpdate(e.target.value);
       });
     }
+    renderBulkUpdate();
   }
   const refreshStudentsTable = () => {
     const el = $("#studentsTable");
