@@ -274,6 +274,7 @@ function render() {
     quickRecord: ["QUICK COLLECTION", "Quick Record"],
     collectionSessions: ["CASH CONTROL", "Collection Sessions"],
     expenses: ["OUTGOING", "Expenses"],
+    transactions: ["LEDGER", "All Transactions"],
     reports: ["REPORTING", "Reports"],
     recycle: ["RECOVERY", "Recycle Bin"],
     activity: ["AUDIT", "Activity Log"],
@@ -291,6 +292,7 @@ function render() {
     quickRecord: renderQuickRecord,
     collectionSessions: renderCollectionSessions,
     expenses: renderExpenses,
+    transactions: renderAllTransactions,
     reports: renderReports,
     recycle: renderRecycle,
     activity: renderActivity,
@@ -426,7 +428,7 @@ function renderDashboard() {
       <div class="panel glass dash-progress"><div class="panel-header with-ic">${reportsIcon(REP_IC.chart)}<div><h3>Contribution progress</h3><span class="muted">${esc(state.settings.eventName)}</span></div><span class="badge paid">${Math.round(pct)}%</span></div><div class="progress-wrap"><div class="progress-track tall"><div class="progress-bar" style="width:${pct}%"></div></div><div class="progress-meta"><span><strong>${paid}</strong> of ${active} paid</span><span>${Math.max(0, active - paid)} not recorded</span></div></div><div class="footer-note">Class days are tracked at the fixed daily amount; past due days and advance payments are allocated automatically.</div></div>
       <div class="panel glass"><div class="panel-header with-ic">${reportsIcon(REP_IC.bolt)}<div><h3>Quick actions</h3></div></div><div class="dash-actions">${button("+ Add Student", "primary-btn", 'data-action="add-student"')}${button("+ Record Contribution", "ghost-btn", 'data-action="add-contribution"')}${button("+ Add Expense", "ghost-btn", 'data-action="add-expense"')}</div><div class="footer-note">Contribution amount: <strong>${money(state.settings.contributionAmount)}</strong></div></div>
     </section>
-    <section class="panel glass"><div class="panel-header with-ic">${reportsIcon(REP_IC.list)}<div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="contributions"')}</div>${recentTable(recent)}</section>
+    <section class="panel glass"><div class="panel-header with-ic">${reportsIcon(REP_IC.list)}<div><h3>Recent transactions</h3><span class="muted">Latest money movement</span></div>${button("View all", "small-btn", 'data-view="transactions"')}</div>${recentTable(recent)}</section>
     <div class="app-footer"><div class="dashboard-credit">Developed by <strong>RG Sinson</strong></div><div class="dashboard-rights">© 2026 RG Sinson · All rights reserved.</div></div>
   </div>`;
 }
@@ -661,6 +663,123 @@ function expenseTable(q = "", date = "") {
     );
   if (!rows.length) return `<div class="empty">No expenses found.</div>`;
   return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Recorded by</th><th>Actions</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${dateOnly(x.date)}</td><td><span class="badge expense">${esc(x.category)}</span></td><td>${esc(x.description)}</td><td><strong>${money(x.amount)}</strong></td><td>${esc(x.by)}</td><td><div class="actions">${button("Edit", "small-btn", 'data-edit-expense="' + x.id + '"')}${button("Delete", "small-btn danger", 'data-delete-expense="' + x.id + '"')}</div></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+const TX_TABS = ["all", "contributions", "expenses"];
+const TX_PAGE_SIZE = 12;
+let txState = { tab: "all", q: "", page: 1 };
+
+function combinedTransactions() {
+  const c = state.contributions.map((x) => ({
+    id: x.id,
+    kind: "Contribution",
+    title: displayStudent(state.students.find((s) => s.id === x.studentId)),
+    sub: x.by || ADMIN,
+    amount: Number(x.amount) || 0,
+    at: x.at,
+  }));
+  const e = state.expenses.map((x) => ({
+    id: x.id,
+    kind: "Expense",
+    title: x.description || x.category || "Expense",
+    sub: `${x.category}${x.by ? " · " + x.by : ""}`,
+    amount: Number(x.amount) || 0,
+    at: x.date,
+  }));
+  return [...c, ...e].sort((a, b) => new Date(b.at) - new Date(a.at));
+}
+
+function filterTransactions(tab, q) {
+  let rows = combinedTransactions();
+  if (tab === "contributions") rows = rows.filter((x) => x.kind === "Contribution");
+  else if (tab === "expenses") rows = rows.filter((x) => x.kind === "Expense");
+  const needle = (q || "").trim().toLowerCase();
+  if (needle) {
+    rows = rows.filter((x) => {
+      const hay = [
+        x.title,
+        x.sub,
+        x.kind,
+        dateOnly(x.at),
+        dateTime(x.at),
+        String(x.amount),
+        Number(x.amount).toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+        Number(x.amount).toFixed(2),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(needle);
+    });
+  }
+  return rows;
+}
+
+function renderAllTransactions() {
+  const counts = {
+    all: state.contributions.length + state.expenses.length,
+    contributions: state.contributions.length,
+    expenses: state.expenses.length,
+  };
+  const activeTab = TX_TABS.includes(txState.tab) ? txState.tab : "all";
+  const tabs = [
+    { key: "all", label: "All" },
+    { key: "contributions", label: "Contributions" },
+    { key: "expenses", label: "Expenses" },
+  ];
+  const tabsHtml = tabs
+    .map(
+      (t) =>
+        `<button class="tx-tab ${t.key === activeTab ? "active" : ""}" data-tx-tab="${t.key}">${t.label}<span class="tx-tab-count">${counts[t.key]}</span></button>`,
+    )
+    .join("");
+  const placeholder =
+    activeTab === "contributions"
+      ? "Search by student name, date, or amount…"
+      : activeTab === "expenses"
+        ? "Search by description, category, date, or amount…"
+        : "Search by name, description, date, or amount…";
+  return `<div class="view">
+    <section class="panel glass">
+      <div class="panel-header with-ic">${reportsIcon(REP_IC.list)}<div><h3>All Transactions</h3><span class="muted">Contributions and expenses in one place</span></div></div>
+      <div class="tx-tabs" role="tablist">${tabsHtml}</div>
+      <div class="search-row"><input class="input search-input" id="txSearch" placeholder="${esc(placeholder)}" value="${esc(txState.q)}"></div>
+      <div id="txTable"></div>
+      <div id="txPager"></div>
+    </section>
+  </div>`;
+}
+
+function renderTransactionRow(x) {
+  const isExp = x.kind === "Expense";
+  return `<div class="recent-item tx-row"><span class="recent-type ${isExp ? "expense" : "paid"}">${x.kind}</span><div class="recent-info"><strong>${esc(x.title)}</strong><span>${esc(x.sub)} · ${dateTime(x.at)}</span></div><b class="recent-amount ${isExp ? "warn-text" : "good-text"}">${isExp ? "−" : "+"}${money(x.amount)}</b></div>`;
+}
+
+function refreshTransactionView() {
+  const el = $("#txTable");
+  const pager = $("#txPager");
+  if (!el || !pager) return;
+  const tab = TX_TABS.includes(txState.tab) ? txState.tab : "all";
+  const rows = filterTransactions(tab, txState.q);
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty">No matching transactions.</div>`;
+    pager.innerHTML = "";
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(rows.length / TX_PAGE_SIZE));
+  if (txState.page < 1) txState.page = 1;
+  if (txState.page > totalPages) txState.page = totalPages;
+  const start = (txState.page - 1) * TX_PAGE_SIZE;
+  const pageRows = rows.slice(start, start + TX_PAGE_SIZE);
+  el.innerHTML = `<div class="recent-list">${pageRows.map(renderTransactionRow).join("")}</div>`;
+  const from = start + 1;
+  const to = Math.min(rows.length, start + pageRows.length);
+  pager.innerHTML =
+    rows.length <= TX_PAGE_SIZE
+      ? ""
+      : `<div class="pager"><button class="small-btn" data-tx-page="prev" ${txState.page === 1 ? "disabled" : ""}>‹ Prev</button><span class="pager-info">Page ${txState.page} of ${totalPages} · ${from}–${to} of ${rows.length}</span><button class="small-btn" data-tx-page="next" ${txState.page === totalPages ? "disabled" : ""}>Next ›</button></div>`;
 }
 
 const REP_IC = {
@@ -985,6 +1104,36 @@ function bindViewEvents() {
     );
   });
   if ($("#expenseTable")) $("#expenseTable").innerHTML = expenseTable();
+  if ($("#txTable")) {
+    const setTab = (tab) => {
+      if (!TX_TABS.includes(tab)) tab = "all";
+      txState.tab = tab;
+      txState.page = 1;
+      $$(".tx-tab").forEach((b) =>
+        b.classList.toggle("active", b.dataset.txTab === tab),
+      );
+      refreshTransactionView();
+    };
+    $$("[data-tx-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => setTab(btn.dataset.txTab));
+    });
+    $("#txSearch")?.addEventListener("input", (e) => {
+      txState.q = e.target.value;
+      txState.page = 1;
+      refreshTransactionView();
+    });
+    const pager = $("#txPager");
+    if (pager) {
+      pager.addEventListener("click", (e) => {
+        const dir = e.target.closest("[data-tx-page]")?.dataset.txPage;
+        if (!dir) return;
+        if (dir === "prev" && txState.page > 1) txState.page--;
+        else if (dir === "next") txState.page++;
+        refreshTransactionView();
+      });
+    }
+    refreshTransactionView();
+  }
   $("#activitySearch")?.addEventListener("input", (e) => {
     $("#activityList").innerHTML = activityList(
       e.target.value,
