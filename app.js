@@ -1948,7 +1948,10 @@ async function bulkRecordPayments() {
   if (bulkRecordSelected.length === 0)
     return showToast("Select at least one student.", "error");
   const paymentDateKey = bulkRecordDate || effectiveTodayKey();
-  const paymentAt = dateFromKey(paymentDateKey).toISOString();
+  const d = dateFromKey(paymentDateKey);
+  const now = new Date();
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+  const paymentAt = d.toISOString();
   const total = amount * bulkRecordSelected.length;
   confirmAction(
     `Record ${bulkRecordSelected.length} payment${bulkRecordSelected.length !== 1 ? "s" : ""}?`,
