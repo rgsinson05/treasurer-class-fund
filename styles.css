@@ -752,6 +752,10 @@ button:disabled {
   gap: 9px;
   margin-top: 18px;
 }
+.session-modal-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
 .danger-btn {
   background: rgba(255, 111, 145, 0.12);
   color: #ff9ab1;
@@ -2266,8 +2270,7 @@ button,
   margin-top: 5px;
   font-size: 16px;
 }
-.today-collection-actions,
-.session-actions {
+.today-collection-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -2276,6 +2279,86 @@ button,
 }
 .session-hero {
   margin-bottom: 18px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kebab-wrap {
+  position: relative;
+  display: inline-block;
+}
+.kebab-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d0d0e0;
+  border-radius: 10px;
+  padding: 5px 9px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.kebab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.kebab-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #161f35;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 6px;
+  min-width: 210px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 90;
+  display: none;
+}
+.kebab-menu.open {
+  display: block;
+  animation: fadeIn 0.15s ease;
+}
+.kebab-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: #d8d8e8;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kebab-menu button:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.kebab-menu button.danger {
+  color: #ff9ab1;
+}
+.kebab-menu button.danger:hover {
+  background: rgba(255, 111, 145, 0.1);
+}
+.session-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.session-actions .primary-btn {
+  width: 100%;
+  text-align: center;
 }
 .session-summary {
   display: grid;
@@ -2387,9 +2470,11 @@ button,
   .session-summary > div:last-child {
     grid-column: auto;
   }
-  .today-collection-actions button,
-  .session-actions button {
+  .today-collection-actions button {
     flex: 1;
+  }
+  .session-actions button {
+    width: 100%;
   }
   .session-row {
     align-items: flex-start;

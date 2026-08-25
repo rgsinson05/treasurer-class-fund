@@ -246,11 +246,14 @@ function vibrate(ms = 35) {
     navigator.vibrate?.(ms);
   } catch {}
 }
-function modal(title, body, actions = "") {
+function modal(title, body, actions = "", headExtra = "") {
   const region = $("#toastRegion");
   if (region) region.innerHTML = "";
   const root = $("#modalRoot");
-  root.innerHTML = `<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h3>${title}</h3><button class="icon-btn" data-close-modal>×</button></div>${body}${actions}</div></div>`;
+  const headContent = headExtra
+    ? `<div style="display:flex;align-items:center;gap:8px">${headExtra}<button class="icon-btn" data-close-modal>×</button></div>`
+    : `<button class="icon-btn" data-close-modal>×</button>`;
+  root.innerHTML = `<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h3>${title}</h3>${headContent}</div>${body}${actions}</div></div>`;
   $("#modalBackdrop").addEventListener("click", (e) => {
     if (
       e.target.id === "modalBackdrop" ||
@@ -374,10 +377,15 @@ function collectionSessionDetail(sessionId) {
         )
         .join("")
     : '<div class="empty">No payments attached to this session.</div>';
+  const kebabHead =
+    session.status === "open"
+      ? `<div class="kebab-wrap"><button class="kebab-btn">⋮</button><div class="kebab-menu"><button data-action="attach-all-session" data-attach-session="${session.id}">📥 Add all from this day</button><button class="danger" data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}">🗑️ Delete session</button></div></div>`
+      : "";
   modal(
     `Session · ${dateOnly(dateFromKey(session.date))}`,
     `<div class="history-summary"><div><span class="muted">Collected</span><strong>${money(total)}</strong></div><div><span class="muted">Payments</span><strong>${payments.length}</strong></div><div><span class="muted">Status</span><strong>${session.status === "open" ? "Open" : "Closed"}</strong></div>${session.status === "closed" ? `<div><span class="muted">Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span class="muted">Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div><div class="history-section-title"><div><strong>Payments in this session</strong><span>Actual money collected during the session</span></div></div><div class="session-payment-list">${rows}</div>${session.note ? `<div class="footer-note" style="margin-top:12px">Note: ${esc(session.note)}</div>` : ""}`,
-    `<div class="modal-actions">${session.status === "open" ? button("Add all from this day", "ghost-btn", `data-action="attach-all-session" data-attach-session="${session.id}"`) + button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`) : ""}${button("Delete session", "danger-btn", `data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}"`)}<button class="ghost-btn" data-close-modal>Close</button></div>`,
+    `<div class="modal-actions session-modal-actions">${session.status === "open" ? `<button class="primary-btn" style="width:100%;text-align:center" data-action="attach-session-payment" data-attach-session="${session.id}">+ Add existing payment</button>` : ""}<button class="ghost-btn" data-close-modal>Close</button></div>`,
+    kebabHead,
   );
 }
 
@@ -388,7 +396,7 @@ function renderCollectionSessions() {
     b.date.localeCompare(a.date),
   );
   const current = session
-    ? `<section class="panel glass session-hero"><div class="panel-header"><div><h3>Today's session</h3><span class="muted">${dateOnly(dateFromKey(today))}</span></div><span class="badge ${session.status === "open" ? "paid" : "active"}">${session.status === "open" ? "Open" : "Closed"}</span></div><div class="session-summary"><div><span>Collected</span><strong>${money(sessionTotal(session))}</strong></div><div><span>Payments</span><strong>${(session.paymentIds || []).length}</strong></div><div><span>Started</span><strong>${dateTime(session.startedAt)}</strong></div>${session.status === "closed" ? `<div><span>Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span>Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div>${session.status === "open" ? `<div class="session-actions">${button("Add all from this day", "ghost-btn", `data-action="attach-all-session" data-attach-session="${session.id}"`)}${button("Add existing payment", "ghost-btn", `data-action="attach-session-payment" data-attach-session="${session.id}"`)}${button("Close session", "primary-btn", 'data-action="close-session"')}</div>` : `<div class="footer-note">This session is closed. Payments can no longer be attached to it.</div>`}</section>`
+    ? `<section class="panel glass session-hero"><div class="panel-header"><div><h3>Today's session</h3><span class="muted">${dateOnly(dateFromKey(today))}</span></div><div class="header-actions"><span class="badge ${session.status === "open" ? "paid" : "active"}">${session.status === "open" ? "Open" : "Closed"}</span><div class="kebab-wrap"><button class="kebab-btn">⋮ More</button><div class="kebab-menu"><button data-action="attach-all-session" data-attach-session="${session.id}">📥 Add all from this day</button><button class="danger" data-action="delete-session" data-session-delete="${session.id}" data-session-date="${session.date}">🗑️ Delete session</button></div></div></div></div><div class="session-summary"><div><span>Collected</span><strong>${money(sessionTotal(session))}</strong></div><div><span>Payments</span><strong>${(session.paymentIds || []).length}</strong></div><div><span>Started</span><strong>${dateTime(session.startedAt)}</strong></div>${session.status === "closed" ? `<div><span>Cash counted</span><strong>${money(session.cashCounted)}</strong></div><div><span>Difference</span><strong class="${Math.abs(Number(session.difference || 0)) < 0.001 ? "good-text" : "warn-text"}">${money(session.difference)}</strong></div>` : ""}</div>${session.status === "open" ? `<div class="session-actions"><button class="primary-btn" style="width:100%;text-align:center" data-action="attach-session-payment" data-attach-session="${session.id}">+ Add existing payment</button><button class="ghost-btn" data-action="close-session">Close session</button></div>` : `<div class="footer-note">This session is closed. Payments can no longer be attached to it.</div>`}</section>`
     : `<section class="panel glass session-hero"><div class="panel-header"><div><h3>No session started today</h3><span class="muted">Sessions track only money collected during the session.</span></div></div><div class="session-actions">${button("Start today’s collection session", "primary-btn", 'data-action="start-session"')}</div></section>`;
   const history = sessions
     .map(
@@ -2927,6 +2935,18 @@ function lock() {
 }
 
 document.addEventListener("click", async (e) => {
+  const kebabBtn = e.target.closest(".kebab-btn");
+  if (kebabBtn) {
+    e.stopPropagation();
+    const menu = kebabBtn.parentElement.querySelector(".kebab-menu");
+    if (menu) {
+      const wasOpen = menu.classList.contains("open");
+      document.querySelectorAll(".kebab-menu.open").forEach((m) => m.classList.remove("open"));
+      if (!wasOpen) menu.classList.add("open");
+    }
+    return;
+  }
+  document.querySelectorAll(".kebab-menu.open").forEach((m) => m.classList.remove("open"));
   const nav = e.target.closest("[data-view]");
   if (nav && !dataReady) {
     showToast("Local data is still loading. Please wait a moment.", "error");
