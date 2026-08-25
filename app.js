@@ -522,7 +522,8 @@ function studentsTable(filter = "", status = "all", gender = "all") {
         .filter((s) => genderGroupKey(s) === key)
         .sort((a, b) => a.name.localeCompare(b.name));
       if (!rows.length) return "";
-      const head = `<div class="student-group-head"><strong>${genderGroupLabel(key)}</strong><span class="student-group-count">${rows.length}</span></div>`;
+      const headLabel = genderGroupLabel(key).toUpperCase();
+      const head = `<div class="student-group-head"><strong>${headLabel} (${rows.length})</strong></div>`;
       const tableRows = rows
         .map((s) => {
           const c = studentComputed(s);
@@ -533,7 +534,7 @@ function studentsTable(filter = "", status = "all", gender = "all") {
       const cards = `<div class="students-mobile student-card-list">${rows
         .map((s) => {
           const c = studentComputed(s);
-          return `<button type="button" class="student-card" data-student-detail="${s.id}"><div class="student-card-info"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-card-alias">${esc(s.alias)}</span>` : ""}<div class="student-card-meta">${c.todayHtml}${c.balanceHtml}<span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></div></div><span class="student-card-chevron" aria-hidden="true">›</span></button>`;
+          return `<button type="button" class="student-card" data-student-detail="${s.id}"><div class="student-card-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-card-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-card-status"><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></div><div class="student-card-balance">${c.balanceHtml}<span class="student-card-chevron" aria-hidden="true">›</span></div></button>`;
         })
         .join("")}</div>`;
       return `<div class="student-group">${head}${table}${cards}</div>`;

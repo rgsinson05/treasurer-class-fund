@@ -3419,16 +3419,6 @@ button,
   font-size: 12px;
   letter-spacing: 0.02em;
 }
-.student-group-count {
-  min-width: 22px;
-  text-align: center;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(139, 124, 255, 0.16);
-  color: #c4bdff;
-  font-size: 10px;
-  font-weight: 800;
-}
 .student-row {
   cursor: pointer;
 }
@@ -3448,24 +3438,33 @@ button,
   gap: 10px;
   width: 100%;
   text-align: left;
-  padding: 12px 13px;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.025);
   color: var(--text);
+  min-height: 52px;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 .student-card:hover {
   border-color: rgba(139, 124, 255, 0.25);
   background: rgba(255, 255, 255, 0.045);
+  transform: translateY(-1px);
 }
-.student-card-info {
+.student-card:active {
+  transform: translateY(0) scale(0.98);
+}
+.student-card-name {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 1px;
 }
-.student-card-info > strong {
+.student-card-name > strong {
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
@@ -3474,12 +3473,18 @@ button,
 .student-card-alias {
   font-size: 10px;
   color: var(--muted);
-  margin-top: -2px;
 }
-.student-card-meta {
+.student-card-status {
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.student-card-balance {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .student-card-chevron {
   color: #8b7cff;
