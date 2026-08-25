@@ -2484,21 +2484,20 @@ function allocationInfoAsOf(studentId, amount, atISO) {
 function autoAllocateAsOf(studentId, amount, atISO) {
   const info = allocationInfoAsOf(studentId, amount, atISO);
   const daily = info.daily;
-  let remaining = amount;
+  const todayAmount = Math.min(amount, info.maxToday);
+  let remaining = amount - todayAmount;
   const pastAmount = Math.min(remaining, info.maxPast);
   remaining -= pastAmount;
-  const todayAmount = Math.min(remaining, info.maxToday);
-  remaining -= todayAmount;
-  const advanceAmount = Math.max(0, remaining);
+  const advanceAmount = remaining;
   const allocations = [];
+  if (todayAmount > 0)
+    allocations.push({ date: info.key, amount: daily, status: "paid" });
   let pastRemaining = pastAmount;
   for (const d of info.past) {
     if (pastRemaining + 1e-9 < daily) break;
     allocations.push({ date: d.date, amount: daily, status: "paid" });
     pastRemaining -= daily;
   }
-  if (todayAmount > 0)
-    allocations.push({ date: info.key, amount: daily, status: "paid" });
   let cursor = addClassDay(info.key, 1);
   let remainingAdvance = advanceAmount;
   while (remainingAdvance + 1e-9 >= daily) {
