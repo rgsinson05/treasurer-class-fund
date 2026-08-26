@@ -3484,18 +3484,16 @@ button,
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
   overflow: hidden;
 }
 .student-card-name > strong {
   font-size: 13px;
-  flex: 1;
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
   display: block;
 }
 .student-card-alias {
@@ -3504,7 +3502,7 @@ button,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 0;
+  max-width: 100%;
 }
 .student-card-status {
   flex: 0 0 auto;
