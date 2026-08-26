@@ -3426,11 +3426,11 @@ button,
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 8px 0;
+  padding: 4px 0;
   background: #1E202E;
 }
 .student-group-head strong {
@@ -3453,12 +3453,12 @@ button,
   max-width: 100%;
   box-sizing: border-box;
   text-align: left;
-  padding: 8px 10px;
+  padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   color: var(--text);
-  min-height: 52px;
+  min-height: 42px;
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -3477,16 +3477,18 @@ button,
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
 }
 .student-list-name > strong {
   font-size: 13px;
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
   display: block;
 }
 .student-list-alias {
@@ -3495,7 +3497,7 @@ button,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  flex-shrink: 0;
 }
 .student-list-meta {
   flex: 0 0 auto;
@@ -3510,8 +3512,8 @@ button,
 }
 .student-list-chevron {
   color: #8b7cff;
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 600;
   flex: 0 0 auto;
 }
 
