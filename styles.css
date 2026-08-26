@@ -3404,96 +3404,141 @@ button,
   }
 }
 
-/* Students: gender groups, responsive table/cards, detail cards */
-.student-groups {
-  display: grid;
-  gap: 16px;
-}
-.student-group-head {
+/* Students: gender tabs + compact responsive list */
+.gender-tabs {
   display: flex;
+  gap: 8px;
+  margin-bottom: 13px;
+  flex-wrap: wrap;
+}
+.gender-tab {
+  display: inline-flex;
   align-items: center;
-  gap: 9px;
-  margin-bottom: 9px;
-}
-.student-group-head strong {
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(4, 8, 18, 0.4);
+  color: #aeb8cf;
   font-size: 12px;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  cursor: pointer;
 }
-.student-group-count {
-  min-width: 22px;
+.gender-tab:hover {
+  border-color: rgba(139, 124, 255, 0.3);
+  color: #fff;
+}
+.gender-tab.active {
+  background: linear-gradient(
+    90deg,
+    rgba(139, 124, 255, 0.22),
+    rgba(139, 124, 255, 0.08)
+  );
+  border-color: rgba(139, 124, 255, 0.4);
+  color: #fff;
+}
+.gender-tab-count {
+  min-width: 20px;
   text-align: center;
-  padding: 2px 7px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: rgba(139, 124, 255, 0.16);
   color: #c4bdff;
   font-size: 10px;
   font-weight: 800;
 }
-.student-row {
-  cursor: pointer;
+.gender-tab.active .gender-tab-count {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }
-.student-row:hover {
-  background: rgba(255, 255, 255, 0.035);
+.compact-filter {
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 148px;
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 700;
 }
-.students-mobile {
-  display: none;
-}
-.student-card-list {
+.student-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
-.student-card {
+.student-item {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
   text-align: left;
-  padding: 12px 13px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.025);
   color: var(--text);
+  cursor: pointer;
 }
-.student-card:hover {
+.student-item:hover {
   border-color: rgba(139, 124, 255, 0.25);
   background: rgba(255, 255, 255, 0.045);
 }
-.student-card-info {
+.student-item-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
 }
-.student-card-info > strong {
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.student-card-alias {
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: -2px;
-}
-.student-card-meta {
+.student-item-name {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 6px;
 }
-.student-card-chevron {
+.student-item-name > strong {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.student-item-alias {
+  font-size: 11px;
+  color: var(--muted);
+}
+.student-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.student-item-meta .meta-sep {
+  color: rgba(154, 164, 187, 0.5);
+}
+.pay-status {
+  font-weight: 800;
+}
+.pay-status--due {
+  color: #ffd58e;
+}
+.pay-status--partial {
+  color: #9fb5ff;
+}
+.pay-status--paid {
+  color: #73e6cf;
+}
+.student-item-balance {
+  color: #cdd5e6;
+  font-weight: 600;
+}
+.student-item-part--not-participating {
+  color: #9aa4bb;
+}
+.student-item-chevron {
   color: #8b7cff;
   font-size: 20px;
   font-weight: 900;
   flex: 0 0 auto;
-}
-@media (max-width: 760px) {
-  .students-desktop {
-    display: none;
-  }
-  .students-mobile {
-    display: grid;
-  }
 }
 
 /* Segmented control (student gender) */

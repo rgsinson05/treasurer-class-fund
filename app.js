@@ -25,6 +25,7 @@ let bulkRecordMode = false;
 let bulkRecordDate = "";
 let bulkRecordAmount = "";
 let bulkRecordSelected = [];
+let studentGenderTab = "all";
 const ACTIVITY_RECENT_LIMIT = 20;
 let state = {
   students: [],
@@ -467,79 +468,65 @@ function genderGroupKey(s) {
       ? "Female"
       : "Unspecified";
 }
-function genderGroupLabel(key) {
-  return key === "Male" ? "Boys" : key === "Female" ? "Girls" : "Unspecified";
-}
-function studentComputed(s) {
-  const payments = state.contributions
-    .filter((x) => x.studentId === s.id)
-    .sort((a, b) => new Date(b.at) - new Date(a.at));
+// Overall payment status for the compact student list.
+// Rules:
+//  - "Paid": no outstanding balance across all allocated dues.
+//  - "Due today": there is an outstanding balance AND today's due is unpaid.
+//  - "Partial": there is an outstanding balance but today's due is already
+//    covered (older allocations still unpaid), or no class today.
+function studentPaymentStatus(s) {
   const ledger = studentLedger(s.id);
+  const outstanding = ledger.outstanding;
   const todayKey = effectiveTodayKey();
   const todayDue =
     isClassDay(todayKey) && todayKey >= classStartKey()
       ? ledger.due.find((x) => x.date === todayKey)
       : null;
-  const todayLabel =
-    todayDue?.status === "paid"
-      ? "Paid"
-      : todayDue?.status === "advance"
-        ? "Advance"
-        : todayDue
-          ? "Due"
-          : "No class";
-  const todayHtml =
-    todayLabel === "Paid"
-      ? '<span class="badge paid">Paid</span>'
-      : todayLabel === "Advance"
-        ? '<span class="badge paid">Advance</span>'
-        : todayLabel === "Due"
-          ? '<span class="badge expense">Due</span>'
-          : '<span class="muted">No class</span>';
-  const balanceHtml = ledger.outstanding
-    ? `<span class="badge expense">${money(ledger.outstanding)} due</span>`
-    : ledger.advance.length
-      ? `<span class="badge paid">${ledger.advance.length} day${ledger.advance.length === 1 ? "" : "s"} ahead</span>`
-      : '<span class="badge active">₱0 due</span>';
-  const last = payments[0] ? dateTime(payments[0].at) : "—";
-  return { todayHtml, balanceHtml, last };
+  const todayUnpaid = !!todayDue && todayDue.status === "unpaid";
+  let category, label;
+  if (outstanding <= 0) {
+    category = "paid";
+    label = "Paid";
+  } else if (todayUnpaid) {
+    category = "due";
+    label = "Due today";
+  } else {
+    category = "partial";
+    label = "Partial";
+  }
+  return { category, label, outstanding, ledger };
 }
 function renderStudents() {
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student name..."> <select class="select" id="studentGenderFilter" style="width:130px"><option value="all">All genders</option><option value="Male">Boys</option><option value="Female">Girls</option></select> <select class="select" id="studentStatusFilter" style="width:170px"><option value="all">All statuses</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
+  const total = state.students.length;
+  const boys = state.students.filter((s) => genderGroupKey(s) === "Male").length;
+  const girls = state.students.filter((s) => genderGroupKey(s) === "Female").length;
+  if (studentGenderTab !== "all" && studentGenderTab !== "Male" && studentGenderTab !== "Female")
+    studentGenderTab = "all";
+  const tab = (key, label, count) =>
+    `<button type="button" class="gender-tab${studentGenderTab === key ? " active" : ""}" data-gender-tab="${key}">${label} <span class="gender-tab-count">${count}</span></button>`;
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="gender-tabs" id="studentGenderTabs">${tab("all", "All", total)}${tab("Male", "Boys", boys)}${tab("Female", "Girls", girls)}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student..."> <select class="select compact-filter" id="studentPayFilter" aria-label="Payment status"><option value="all">Payment status</option><option value="due">Due</option><option value="partial">Partial</option><option value="paid">Paid</option></select> <select class="select compact-filter" id="studentStatusFilter" aria-label="Participation"><option value="all">Participation</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
 }
-function studentsTable(filter = "", status = "all", gender = "all") {
-  const matched = state.students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(filter.toLowerCase()) &&
-      (status === "all" || s.status === status) &&
-      (gender === "all" || genderGroupKey(s) === gender),
-  );
+function studentListItem(s) {
+  const ps = studentPaymentStatus(s);
+  const participation = statusLabel(s.status);
+  const partClass = s.status === "Active" ? "participating" : "not-participating";
+  return `<button type="button" class="student-item" data-student-detail="${s.id}"><div class="student-item-body"><div class="student-item-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-item-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-item-meta"><span class="pay-status pay-status--${ps.category}">${ps.label}</span><span class="meta-sep" aria-hidden="true">·</span><span class="student-item-balance">Balance ${money(ps.outstanding)}</span><span class="meta-sep" aria-hidden="true">·</span><span class="student-item-part student-item-part--${partClass}">${participation}</span></div></div><span class="student-item-chevron" aria-hidden="true">›</span></button>`;
+}
+function studentsTable(filter = "", status = "all", gender = "all", payStatus = "all") {
+  const matched = state.students.filter((s) => {
+    if (!s.name.toLowerCase().includes(filter.toLowerCase())) return false;
+    if (status !== "all" && s.status !== status) return false;
+    if (gender !== "all" && genderGroupKey(s) !== gender) return false;
+    if (payStatus !== "all" && studentPaymentStatus(s).category !== payStatus)
+      return false;
+    return true;
+  });
   if (!matched.length) return `<div class="empty">No students found.</div>`;
-  const order = gender === "all" ? ["Male", "Female", "Unspecified"] : [gender];
-  const blocks = order
-    .map((key) => {
-      const rows = matched
-        .filter((s) => genderGroupKey(s) === key)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      if (!rows.length) return "";
-      const head = `<div class="student-group-head"><strong>${genderGroupLabel(key)}</strong><span class="student-group-count">${rows.length}</span></div>`;
-      const tableRows = rows
-        .map((s) => {
-          const c = studentComputed(s);
-          return `<tr class="student-row" data-student-detail="${s.id}"><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></td><td>${c.todayHtml}</td><td>${c.balanceHtml}</td><td>${c.last}</td></tr>`;
-        })
-        .join("");
-      const table = `<div class="table-wrap students-desktop"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
-      const cards = `<div class="students-mobile student-card-list">${rows
-        .map((s) => {
-          const c = studentComputed(s);
-          return `<button type="button" class="student-card" data-student-detail="${s.id}"><div class="student-card-info"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-card-alias">${esc(s.alias)}</span>` : ""}<div class="student-card-meta">${c.todayHtml}${c.balanceHtml}<span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></div></div><span class="student-card-chevron" aria-hidden="true">›</span></button>`;
-        })
-        .join("")}</div>`;
-      return `<div class="student-group">${head}${table}${cards}</div>`;
-    })
+  const rows = matched
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => studentListItem(s))
     .join("");
-  return `<div class="student-groups">${blocks}</div>`;
+  return `<div class="student-list">${rows}</div>`;
 }
 
 function renderQuickRecord() {
@@ -1085,12 +1072,22 @@ function bindViewEvents() {
       el.innerHTML = studentsTable(
         $("#studentSearch")?.value || "",
         $("#studentStatusFilter")?.value || "all",
-        $("#studentGenderFilter")?.value || "all",
+        studentGenderTab,
+        $("#studentPayFilter")?.value || "all",
       );
   };
   $("#studentSearch")?.addEventListener("input", refreshStudentsTable);
   $("#studentStatusFilter")?.addEventListener("change", refreshStudentsTable);
-  $("#studentGenderFilter")?.addEventListener("change", refreshStudentsTable);
+  $("#studentPayFilter")?.addEventListener("change", refreshStudentsTable);
+  $("#studentGenderTabs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-gender-tab]");
+    if (!btn) return;
+    studentGenderTab = btn.dataset.genderTab;
+    $$("#studentGenderTabs .gender-tab").forEach((b) =>
+      b.classList.toggle("active", b === btn),
+    );
+    refreshStudentsTable();
+  });
   if ($("#studentsTable")) refreshStudentsTable();
   $("#contributionSearch")?.addEventListener("input", () => {
     refreshContributionTable();
