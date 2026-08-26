@@ -3405,6 +3405,20 @@ button,
 }
 
 /* Students: gender groups, responsive table/cards, detail cards */
+.view,
+.panel,
+.student-groups,
+.student-group,
+.student-card-list,
+.student-row,
+.student-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.view {
+  overflow-x: hidden;
+}
 .student-groups {
   display: grid;
   gap: 16px;
@@ -3422,6 +3436,12 @@ button,
 .student-row {
   cursor: pointer;
 }
+.student-row td {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .student-row:hover {
   background: rgba(255, 255, 255, 0.035);
 }
@@ -3435,10 +3455,13 @@ button,
 .student-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   text-align: left;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.025);
@@ -3463,28 +3486,37 @@ button,
   display: flex;
   flex-direction: column;
   gap: 1px;
+  overflow: hidden;
 }
 .student-card-name > strong {
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 .student-card-alias {
   font-size: 10px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .student-card-status {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
 }
 .student-card-balance {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .student-card-chevron {
   color: #8b7cff;
@@ -3492,12 +3524,55 @@ button,
   font-weight: 900;
   flex: 0 0 auto;
 }
+
+/* Students panel: title + Add Student share top row, filters stack below */
+.students-panel-header {
+  flex-wrap: wrap;
+  width: 100%;
+}
+.students-panel-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.students-panel-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.students-search-row {
+  width: 100%;
+}
+.students-filter {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 @media (max-width: 760px) {
   .students-desktop {
     display: none;
   }
   .students-mobile {
     display: grid;
+  }
+  .students-panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .students-panel-actions {
+    width: 100%;
+  }
+  .students-panel-actions .primary-btn {
+    width: 100%;
+  }
+  .students-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .students-search-row .search-input,
+  .students-search-row .students-filter {
+    width: 100%;
   }
 }
 
