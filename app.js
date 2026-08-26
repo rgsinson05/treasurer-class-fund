@@ -509,8 +509,9 @@ function renderStudents() {
 function studentListItem(s) {
   const ps = studentPaymentStatus(s);
   const participation = statusLabel(s.status);
-  const partClass = s.status === "Active" ? "participating" : "not-participating";
-  return `<button type="button" class="student-item" data-student-detail="${s.id}"><div class="student-item-body"><div class="student-item-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-item-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-item-meta"><span class="pay-status pay-status--${ps.category}">${ps.label}</span><span class="meta-sep" aria-hidden="true">·</span><span class="student-item-balance">Balance ${money(ps.outstanding)}</span><span class="meta-sep" aria-hidden="true">·</span><span class="student-item-part student-item-part--${partClass}">${participation}</span></div></div><span class="student-item-chevron" aria-hidden="true">›</span></button>`;
+  const partPillClass = s.status === "Active" ? "participating" : "not-participating";
+  const balancePillClass = ps.outstanding <= 0 ? "balance-zero" : "balance";
+  return `<button type="button" class="student-item" data-student-detail="${s.id}"><div class="student-item-body"><div class="student-item-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-item-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-item-meta"><span class="meta-pill meta-pill--${ps.category}">${ps.label}</span><span class="meta-pill meta-pill--${balancePillClass}">Balance ${money(ps.outstanding)}</span><span class="meta-pill meta-pill--${partPillClass}">${participation}</span></div></div><span class="student-item-chevron" aria-hidden="true">›</span></button>`;
 }
 function studentsTable(filter = "", status = "all", gender = "all", payStatus = "all") {
   const matched = state.students.filter((s) => {

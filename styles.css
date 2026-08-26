@@ -3541,6 +3541,53 @@ button,
   flex: 0 0 auto;
 }
 
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.meta-pill--paid {
+  background: rgba(74, 222, 128, 0.1);
+  color: #7be6a1;
+  border-color: rgba(74, 222, 128, 0.22);
+}
+.meta-pill--partial {
+  background: rgba(139, 124, 255, 0.1);
+  color: #bdb6ff;
+  border-color: rgba(139, 124, 255, 0.22);
+}
+.meta-pill--due {
+  background: rgba(255, 199, 107, 0.1);
+  color: #ffd58e;
+  border-color: rgba(255, 199, 107, 0.22);
+}
+.meta-pill--balance {
+  background: rgba(205, 213, 230, 0.08);
+  color: #cdd5e6;
+  border-color: rgba(205, 213, 230, 0.18);
+}
+.meta-pill--balance-zero {
+  background: rgba(74, 222, 128, 0.08);
+  color: #7be6a1;
+  border-color: rgba(74, 222, 128, 0.18);
+}
+.meta-pill--participating {
+  background: rgba(85, 214, 190, 0.08);
+  color: #73e6cf;
+  border-color: rgba(85, 214, 190, 0.18);
+}
+.meta-pill--not-participating {
+  background: rgba(255, 111, 145, 0.08);
+  color: #ff9ab1;
+  border-color: rgba(255, 111, 145, 0.18);
+}
+
 /* Segmented control (student gender) */
 .seg-group {
   display: flex;
