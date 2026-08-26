@@ -524,20 +524,13 @@ function studentsTable(filter = "", status = "all", gender = "all") {
       if (!rows.length) return "";
       const headLabel = genderGroupLabel(key).toUpperCase();
       const head = `<div class="student-group-head"><strong>${headLabel} (${rows.length})</strong></div>`;
-      const tableRows = rows
+      const listRows = rows
         .map((s) => {
           const c = studentComputed(s);
-          return `<tr class="student-row" data-student-detail="${s.id}"><td><strong>${esc(s.name)}</strong>${s.alias ? `<div class="muted">${esc(s.alias)}</div>` : ""}</td><td><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></td><td>${c.todayHtml}</td><td>${c.balanceHtml}</td><td>${c.last}</td></tr>`;
+          return `<div class="student-list-row" data-student-detail="${s.id}"><div class="student-list-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-list-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-list-meta"><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span><span class="student-list-balance">${c.balanceHtml}</span><span class="student-list-chevron" aria-hidden="true">›</span></div></div>`;
         })
         .join("");
-      const table = `<div class="table-wrap students-desktop"><table class="data-table"><thead><tr><th>Name</th><th>Status</th><th>Today</th><th>Balance</th><th>Last payment</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
-      const cards = `<div class="students-mobile student-card-list">${rows
-        .map((s) => {
-          const c = studentComputed(s);
-          return `<button type="button" class="student-card" data-student-detail="${s.id}"><div class="student-card-name"><strong>${esc(s.name)}</strong>${s.alias ? `<span class="student-card-alias">${esc(s.alias)}</span>` : ""}</div><div class="student-card-status"><span class="badge ${s.status.toLowerCase()}">${statusLabel(s.status)}</span></div><div class="student-card-balance">${c.balanceHtml}<span class="student-card-chevron" aria-hidden="true">›</span></div></button>`;
-        })
-        .join("")}</div>`;
-      return `<div class="student-group">${head}${table}${cards}</div>`;
+      return `<div class="student-group">${head}<div class="student-list">${listRows}</div></div>`;
     })
     .join("");
   return `<div class="student-groups">${blocks}</div>`;

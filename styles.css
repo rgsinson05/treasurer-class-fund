@@ -3404,14 +3404,13 @@ button,
   }
 }
 
-/* Students: gender groups, responsive table/cards, detail cards */
+/* Students: gender groups, compact row list */
 .view,
 .panel,
 .student-groups,
 .student-group,
-.student-card-list,
-.student-row,
-.student-card {
+.student-list,
+.student-list-row {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -3427,32 +3426,25 @@ button,
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0;
+  background: #1E202E;
 }
 .student-group-head strong {
   font-size: 12px;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
-.student-row {
-  cursor: pointer;
+.student-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.student-row td {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.student-row:hover {
-  background: rgba(255, 255, 255, 0.035);
-}
-.students-mobile {
-  display: none;
-}
-.student-card-list {
-  display: grid;
-  gap: 8px;
-}
-.student-card {
+.student-list-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3461,26 +3453,27 @@ button,
   max-width: 100%;
   box-sizing: border-box;
   text-align: left;
-  padding: 0.75rem;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
   color: var(--text);
   min-height: 52px;
+  cursor: pointer;
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
     background 0.2s ease;
 }
-.student-card:hover {
+.student-list-row:hover {
   border-color: rgba(139, 124, 255, 0.25);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.04);
   transform: translateY(-1px);
 }
-.student-card:active {
+.student-list-row:active {
   transform: translateY(0) scale(0.98);
 }
-.student-card-name {
+.student-list-name {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -3488,7 +3481,7 @@ button,
   gap: 1px;
   overflow: hidden;
 }
-.student-card-name > strong {
+.student-list-name > strong {
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
@@ -3496,7 +3489,7 @@ button,
   max-width: 100%;
   display: block;
 }
-.student-card-alias {
+.student-list-alias {
   font-size: 10px;
   color: var(--muted);
   white-space: nowrap;
@@ -3504,23 +3497,20 @@ button,
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.student-card-status {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-.student-card-balance {
+.student-list-meta {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
-.student-card-chevron {
+.student-list-balance {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.student-list-chevron {
   color: #8b7cff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
   flex: 0 0 auto;
 }
@@ -3549,12 +3539,6 @@ button,
 }
 
 @media (max-width: 760px) {
-  .students-desktop {
-    display: none;
-  }
-  .students-mobile {
-    display: grid;
-  }
   .students-panel-header {
     flex-direction: column;
     align-items: stretch;
