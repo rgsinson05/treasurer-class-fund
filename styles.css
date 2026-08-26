@@ -3558,34 +3558,34 @@ button,
   border-color: rgba(74, 222, 128, 0.22);
 }
 .meta-pill--partial {
-  background: rgba(139, 124, 255, 0.1);
-  color: #bdb6ff;
-  border-color: rgba(139, 124, 255, 0.22);
+  background: rgba(96, 165, 250, 0.1);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.22);
 }
 .meta-pill--due {
-  background: rgba(255, 199, 107, 0.1);
+  background: rgba(255, 199, 107, 0.12);
   color: #ffd58e;
-  border-color: rgba(255, 199, 107, 0.22);
+  border-color: rgba(255, 199, 107, 0.25);
 }
 .meta-pill--balance {
-  background: rgba(205, 213, 230, 0.08);
-  color: #cdd5e6;
-  border-color: rgba(205, 213, 230, 0.18);
+  background: rgba(255, 199, 107, 0.06);
+  color: #d4b77a;
+  border-color: rgba(255, 199, 107, 0.12);
 }
 .meta-pill--balance-zero {
-  background: rgba(74, 222, 128, 0.08);
-  color: #7be6a1;
-  border-color: rgba(74, 222, 128, 0.18);
+  background: rgba(74, 222, 128, 0.06);
+  color: #6ecf90;
+  border-color: rgba(74, 222, 128, 0.12);
 }
 .meta-pill--participating {
-  background: rgba(85, 214, 190, 0.08);
-  color: #73e6cf;
-  border-color: rgba(85, 214, 190, 0.18);
+  background: rgba(139, 124, 255, 0.08);
+  color: #a78bfa;
+  border-color: rgba(139, 124, 255, 0.15);
 }
 .meta-pill--not-participating {
-  background: rgba(255, 111, 145, 0.08);
-  color: #ff9ab1;
-  border-color: rgba(255, 111, 145, 0.18);
+  background: rgba(248, 113, 113, 0.08);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.15);
 }
 
 /* Segmented control (student gender) */
