@@ -3429,6 +3429,13 @@ button,
   }
 }
 
+/* Students: uniform dark Classmates card (removes .glass 135deg top tint) */
+.students-panel {
+  background: #11182a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* Students: gender tabs + compact responsive list */
 .gender-tabs {
   display: flex;
