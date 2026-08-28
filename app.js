@@ -845,7 +845,7 @@ function renderReports() {
       <div class="report-hero">
         <div class="report-hero-card collected">${reportsIcon(REP_IC.cash)}<span>Collected</span><strong>${money(collected)}</strong></div>
         <div class="report-hero-card spent">${reportsIcon(REP_IC.receipt)}<span>Expenses</span><strong>${money(spent)}</strong></div>
-        <div class="report-hero-card balance">${reportsIcon(REP_IC.balance)}<span>Balance</span><strong>${money(balance)}</strong></div>
+        <div class="report-hero-card balance">${reportsIcon(REP_IC.balance)}<span>Current Balance</span><strong>${money(balance)}</strong></div>
       </div>
       <div class="report-meta-grid">
         <div>${reportsIcon(REP_IC.users)}<div><span>Students</span><b>${state.students.length}</b></div></div>
