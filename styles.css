@@ -12,6 +12,26 @@
   --warning: #ffc76b;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
   --radius: 22px;
+
+  /* Status palette */
+  --partial: #93c5fd;
+  --partial-bg: rgba(96, 165, 250, 0.1);
+  --partial-border: rgba(96, 165, 250, 0.22);
+
+  /* Balance palette — cool blue, distinct from Partial sky and indigo */
+  --balance: #67e8f9;
+  --balance-bg: rgba(103, 232, 249, 0.10);
+  --balance-border: rgba(103, 232, 249, 0.22);
+
+  /* Outstanding palette — active red warning */
+  --outstanding: #ff6f91;
+  --outstanding-bg: rgba(255, 111, 145, 0.18);
+  --outstanding-border: rgba(255, 111, 145, 0.32);
+
+  /* Not Participating — muted/disabled red */
+  --not-participating: #fca5a5;
+  --not-participating-bg: rgba(248, 113, 113, 0.08);
+  --not-participating-border: rgba(248, 113, 113, 0.15);
 }
 * {
   box-sizing: border-box;
@@ -420,19 +440,19 @@ button:disabled {
   color: #ffd58e;
 }
 .dash-metric.balance {
-  border-color: rgba(139, 124, 255, 0.3);
+  border-color: var(--balance-border);
   background: linear-gradient(
     135deg,
-    rgba(139, 124, 255, 0.12),
+    var(--balance-bg),
     rgba(255, 255, 255, 0.02)
   );
 }
 .dash-metric.balance .rep-ic {
-  background: rgba(139, 124, 255, 0.18);
-  color: #c4bdff;
+  background: var(--balance-bg);
+  color: var(--balance);
 }
 .dash-metric.balance strong {
-  color: #d7d2ff;
+  color: var(--balance);
 }
 .dash-metric.students {
   border-color: rgba(74, 222, 128, 0.26);
@@ -3568,9 +3588,9 @@ button,
   border-color: rgba(255, 199, 107, 0.25);
 }
 .meta-pill--balance {
-  background: rgba(255, 199, 107, 0.06);
-  color: #d4b77a;
-  border-color: rgba(255, 199, 107, 0.12);
+  background: var(--balance-bg);
+  color: var(--balance);
+  border-color: var(--balance-border);
 }
 .meta-pill--balance-zero {
   background: rgba(74, 222, 128, 0.06);
@@ -3583,9 +3603,14 @@ button,
   border-color: rgba(139, 124, 255, 0.15);
 }
 .meta-pill--not-participating {
-  background: rgba(248, 113, 113, 0.08);
-  color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.15);
+  background: var(--not-participating-bg);
+  color: var(--not-participating);
+  border-color: var(--not-participating-border);
+}
+.meta-pill--outstanding {
+  background: var(--outstanding-bg);
+  color: var(--outstanding);
+  border-color: var(--outstanding-border);
 }
 
 /* Segmented control (student gender) */
@@ -3722,19 +3747,19 @@ button,
   color: #ffd58e;
 }
 .report-hero-card.balance {
-  border-color: rgba(139, 124, 255, 0.32);
+  border-color: var(--balance-border);
   background: linear-gradient(
     135deg,
-    rgba(139, 124, 255, 0.14),
+    var(--balance-bg),
     rgba(255, 255, 255, 0.02)
   );
 }
 .report-hero-card.balance .rep-ic {
-  background: rgba(139, 124, 255, 0.18);
-  color: #c4bdff;
+  background: var(--balance-bg);
+  color: var(--balance);
 }
 .report-hero-card.balance strong {
-  color: #d7d2ff;
+  color: var(--balance);
 }
 .report-meta-grid {
   display: grid;
@@ -3864,18 +3889,18 @@ button,
   color: #73e6cf;
 }
 .status-tile.partial .rep-ic {
-  background: rgba(139, 124, 255, 0.16);
-  color: #bdb6ff;
+  background: var(--partial-bg);
+  color: var(--partial);
 }
 .status-tile.partial b {
-  color: #bdb6ff;
+  color: var(--partial);
 }
-.status-tile.unpaid .rep-ic {
-  background: rgba(255, 111, 145, 0.14);
-  color: #ff9ab1;
+.status-tile.outstanding .rep-ic {
+  background: var(--outstanding-bg);
+  color: var(--outstanding);
 }
-.status-tile.unpaid b {
-  color: #ff9ab1;
+.status-tile.outstanding b {
+  color: var(--outstanding);
 }
 .status-tile.advance .rep-ic {
   background: rgba(255, 199, 107, 0.14);

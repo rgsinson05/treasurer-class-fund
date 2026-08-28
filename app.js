@@ -477,6 +477,7 @@ function genderGroupKey(s) {
 function studentPaymentStatus(s) {
   const ledger = studentLedger(s.id);
   const outstanding = ledger.outstanding;
+  const totalReceived = ledger.totalReceived;
   const todayKey = effectiveTodayKey();
   const todayDue =
     isClassDay(todayKey) && todayKey >= classStartKey()
@@ -490,6 +491,9 @@ function studentPaymentStatus(s) {
   } else if (todayUnpaid) {
     category = "due";
     label = "Due today";
+  } else if (totalReceived === 0) {
+    category = "outstanding";
+    label = "Outstanding";
   } else {
     category = "partial";
     label = "Partial";
@@ -504,7 +508,7 @@ function renderStudents() {
     studentGenderTab = "all";
   const tab = (key, label, count) =>
     `<button type="button" class="gender-tab${studentGenderTab === key ? " active" : ""}" data-gender-tab="${key}">${label} <span class="gender-tab-count">${count}</span></button>`;
-  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="gender-tabs" id="studentGenderTabs">${tab("all", "All", total)}${tab("Male", "Boys", boys)}${tab("Female", "Girls", girls)}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student..."> <select class="select compact-filter" id="studentPayFilter" aria-label="Payment status"><option value="all">Payment status</option><option value="due">Due</option><option value="partial">Partial</option><option value="paid">Paid</option></select> <select class="select compact-filter" id="studentStatusFilter" aria-label="Participation"><option value="all">Participation</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
+  return `<div class="view"><section class="panel glass"><div class="panel-header"><div><h3>Classmates</h3><span class="muted">Manually managed student list</span></div>${button("+ Add Student", "primary-btn", 'data-action="add-student"')}</div><div class="gender-tabs" id="studentGenderTabs">${tab("all", "All", total)}${tab("Male", "Boys", boys)}${tab("Female", "Girls", girls)}</div><div class="search-row"><input class="input search-input" id="studentSearch" placeholder="Search student..."> <select class="select compact-filter" id="studentPayFilter" aria-label="Payment status"><option value="all">Payment status</option><option value="due">Due</option><option value="outstanding">Outstanding</option><option value="partial">Partial</option><option value="paid">Paid</option></select> <select class="select compact-filter" id="studentStatusFilter" aria-label="Participation"><option value="all">Participation</option><option value="Active">Participating</option><option value="Inactive">Not participating</option></select></div><div id="studentsTable"></div></section></div>`;
 }
 function studentListItem(s) {
   const ps = studentPaymentStatus(s);
@@ -803,14 +807,14 @@ function collectionOverview() {
   const active = state.students.filter((s) => s.status === "Active");
   let expected = 0,
     remaining = 0;
-  const counts = { paid: 0, partial: 0, unpaid: 0, advance: 0 };
+  const counts = { paid: 0, partial: 0, outstanding: 0, advance: 0 };
   for (const s of active) {
     const l = studentLedger(s.id);
     expected += l.due.length * daily;
     remaining += l.outstanding;
     if (l.outstanding > 0) {
-      if (l.paid.length > 0) counts.partial++;
-      else counts.unpaid++;
+      if (l.totalReceived > 0) counts.partial++;
+      else counts.outstanding++;
     } else if (l.advance.length > 0) {
       counts.advance++;
     } else {
@@ -847,7 +851,7 @@ function renderReports() {
         <div>${reportsIcon(REP_IC.users)}<div><span>Students</span><b>${state.students.length}</b></div></div>
         <div>${reportsIcon(REP_IC.usersCheck)}<div><span>Contributors</span><b>${contributors}</b></div></div>
         <div>${reportsIcon(REP_IC.coins)}<div><span>Daily amount</span><b>${money(state.settings.contributionAmount)}</b></div></div>
-        <div>${reportsIcon(REP_IC.alert)}<div><span>Unpaid dues</span><b class="${ov.remaining ? "warn-text" : "good-text"}">${money(ov.remaining)}</b></div></div>
+        <div>${reportsIcon(REP_IC.alert)}<div><span>Outstanding dues</span><b style="color:var(--balance);font-size:14px;font-weight:800;display:block;margin-top:1px;">${money(ov.remaining)}</b></div></div>
       </div>
     </section>
 
@@ -856,7 +860,7 @@ function renderReports() {
       <div class="collection-overview-grid">
         <div><span>Expected</span><strong>${money(ov.expected)}</strong></div>
         <div><span>Collected</span><strong class="good-text">${money(ov.collected)}</strong></div>
-        <div><span>Remaining</span><strong class="${ov.remaining ? "warn-text" : "good-text"}">${money(ov.remaining)}</strong></div>
+        <div><span>Remaining</span><strong style="color:var(--balance);">${money(ov.remaining)}</strong></div>
       </div>
       <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${ov.pct}%"></div></div><div class="progress-meta"><span>${Math.round(ov.pct)}% collected</span><span>${money(ov.collected)} of ${money(ov.expected)}</span></div></div>
     </section>
@@ -866,7 +870,7 @@ function renderReports() {
       <div class="status-overview-grid">
         <div class="status-tile paid">${reportsIcon(REP_IC.check)}<b>${ov.counts.paid}</b><span>Paid</span></div>
         <div class="status-tile partial">${reportsIcon(REP_IC.partial)}<b>${ov.counts.partial}</b><span>Partially paid</span></div>
-        <div class="status-tile unpaid">${reportsIcon(REP_IC.alert)}<b>${ov.counts.unpaid}</b><span>Unpaid</span></div>
+        <div class="status-tile outstanding">${reportsIcon(REP_IC.alert)}<b>${ov.counts.outstanding}</b><span>Outstanding</span></div>
         <div class="status-tile advance">${reportsIcon(REP_IC.clock)}<b>${ov.counts.advance}</b><span>Paid in advance</span></div>
       </div>
     </section>
@@ -982,7 +986,7 @@ function howItWorksGuide() {
     [
       `<path d="M4 4v16h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>`,
       "Reports",
-      `<p>A one-glance financial overview: the <b>Treasury Summary</b> shows Collected, Expenses, and Balance, plus students, contributors, and unpaid dues.</p><p><b>Collection Overview</b> shows expected vs collected with a progress bar; <b>Student Contribution Status</b> counts who's paid, partial, unpaid, or in advance; and <b>Expense Breakdown</b> lists spending by category.</p><p>Use <b>Export JSON Backup</b> to save all data, <b>Export Transactions CSV</b> for a spreadsheet, or <b>Print Report</b> for a paper copy.</p>`,
+      `<p>A one-glance financial overview: the <b>Treasury Summary</b> shows Collected, Expenses, and Balance, plus students, contributors, and unpaid dues.</p><p><b>Collection Overview</b> shows expected vs collected with a progress bar; <b>Student Contribution Status</b> counts who's paid, partial, outstanding, or in advance; and <b>Expense Breakdown</b> lists spending by category.</p><p>Use <b>Export JSON Backup</b> to save all data, <b>Export Transactions CSV</b> for a spreadsheet, or <b>Print Report</b> for a paper copy.</p>`,
     ],
     [
       `<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9h17M8 2.5v4M16 2.5v4"/>`,
