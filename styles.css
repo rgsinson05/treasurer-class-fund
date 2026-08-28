@@ -18,10 +18,10 @@
   --partial-bg: rgba(96, 165, 250, 0.1);
   --partial-border: rgba(96, 165, 250, 0.22);
 
-  /* Balance palette — cool blue, distinct from Partial sky and indigo */
-  --balance: #67e8f9;
-  --balance-bg: rgba(103, 232, 249, 0.10);
-  --balance-border: rgba(103, 232, 249, 0.22);
+  /* Balance palette — warm amber, distinct from Partial sky and indigo */
+  --balance: #fbbf24;
+  --balance-bg: rgba(251, 191, 36, 0.10);
+  --balance-border: rgba(251, 191, 36, 0.22);
 
   /* Outstanding palette — active red warning */
   --outstanding: #ff6f91;
@@ -3598,9 +3598,9 @@ button,
   border-color: rgba(74, 222, 128, 0.12);
 }
 .meta-pill--participating {
-  background: rgba(139, 124, 255, 0.08);
-  color: #a78bfa;
-  border-color: rgba(139, 124, 255, 0.15);
+  background: #2a2a40;
+  color: #c0bff2;
+  border-color: rgba(180, 178, 229, 0.25);
 }
 .meta-pill--not-participating {
   background: var(--not-participating-bg);
