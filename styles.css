@@ -3711,6 +3711,7 @@ button,
   width: 26px;
   height: 26px;
   border-radius: 8px;
+  flex-shrink: 0;
   margin-bottom: 9px;
 }
 .report-hero-card span {
