@@ -3997,7 +3997,7 @@ button,
   .report-hero-card .rep-ic {
     margin-bottom: 0;
   }
-  .report-hero-card > span {
+  .report-hero-card > span:not(.rep-ic) {
     flex: 1;
   }
   .collection-overview-grid {
